@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.burton.sonos.domain.SpotifyAuthTokens
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -29,23 +28,7 @@ class LocalPrefs @Inject constructor(
         store.edit { it[SELECTED_GROUP] = id }
     }
 
-    suspend fun spotifyTokens(): SpotifyAuthTokens? {
-        val data = store.data.first()
-        val token = data[SPOTIFY_TOKEN] ?: return null
-        val key = data[SPOTIFY_KEY] ?: return null
-        return SpotifyAuthTokens(token, key)
-    }
-
-    suspend fun saveSpotifyTokens(tokens: SpotifyAuthTokens) {
-        store.edit {
-            it[SPOTIFY_TOKEN] = tokens.authToken
-            it[SPOTIFY_KEY] = tokens.privateKey
-        }
-    }
-
     private companion object {
         val SELECTED_GROUP = stringPreferencesKey("selected_group")
-        val SPOTIFY_TOKEN = stringPreferencesKey("spotify_token")
-        val SPOTIFY_KEY = stringPreferencesKey("spotify_key")
     }
 }

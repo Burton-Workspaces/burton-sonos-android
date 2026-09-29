@@ -21,7 +21,6 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +42,6 @@ import com.burton.sonos.ui.theme.BurtonSand
 @Composable
 fun SourcesScreen(
     onBrowse: (objectId: String, title: String) -> Unit,
-    onSpotify: () -> Unit,
     viewModel: SourcesViewModel = hiltViewModel(),
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
@@ -73,25 +71,6 @@ fun SourcesScreen(
                             else -> source.objectId?.let { onBrowse(it, source.title) }
                         }
                     },
-                )
-            }
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text("SERVICES", style = MaterialTheme.typography.labelSmall, color = BurtonMute)
-            }
-            item {
-                SourceRow(
-                    source = SystemSource(
-                        id = "spotify",
-                        title = "Spotify",
-                        subtitle = if (snapshot.spotifyAccount != null) {
-                            snapshot.spotifyAccount?.nickname?.ifBlank { "Connected" } ?: "Connected"
-                        } else {
-                            "Add this household’s Spotify account"
-                        },
-                        kind = SystemSource.Kind.SERVICE,
-                    ),
-                    onClick = onSpotify,
                 )
             }
         }
@@ -125,5 +104,4 @@ private fun iconFor(kind: SystemSource.Kind): ImageVector = when (kind) {
     SystemSource.Kind.RADIO -> Icons.Rounded.Radio
     SystemSource.Kind.LINE_IN -> Icons.Rounded.Headphones
     SystemSource.Kind.TV -> Icons.Rounded.Tv
-    SystemSource.Kind.SERVICE -> Icons.Rounded.Speaker
 }

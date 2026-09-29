@@ -1,12 +1,15 @@
 package com.burton.sonos.ui.room
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -16,7 +19,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,6 +33,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burton.sonos.ui.components.AlbumArt
 import com.burton.sonos.ui.components.TransportRow
+import com.burton.sonos.ui.theme.BurtonCharcoal
+import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
@@ -39,10 +47,12 @@ fun RoomDetailScreen(
     viewModel: RoomDetailViewModel = hiltViewModel(),
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
+    val grouping by viewModel.grouping.collectAsStateWithLifecycle()
     val household = snapshot.household
     val group = snapshot.selectedGroup
     val playback = snapshot.selectedPlayback
     val name = if (household != null && group != null) household.groupName(group) else "Room"
+    val rooms = household?.visiblePlayers.orEmpty()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,6 +105,63 @@ fun RoomDetailScreen(
                 inactiveTrackColor = BurtonMute.copy(alpha = 0.3f),
             ),
         )
+        if (rooms.size > 1 && group != null) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "GROUP",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BurtonMute,
+                    modifier = Modifier.weight(1f),
+                )
+                if (household?.isGrouped(group) == true) {
+                    TextButton(onClick = viewModel::ungroupAll, enabled = !grouping) {
+                        Text("Ungroup", color = BurtonSand)
+                    }
+                }
+            }
+            Text(
+                "Play this room with others on the same system.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = BurtonMute,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(10.dp))
+            rooms.forEach { player ->
+                val inGroup = player.uuid in group.memberUuids
+                val coordinator = player.uuid == group.coordinatorUuid
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .background(BurtonCharcoal, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(player.name, color = BurtonIvory, style = MaterialTheme.typography.titleMedium)
+                        if (coordinator) {
+                            Text("Coordinator", color = BurtonSandDim, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Switch(
+                        checked = inGroup,
+                        enabled = !coordinator && !grouping,
+                        onCheckedChange = { viewModel.setGrouped(player.uuid, it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = BurtonIvory,
+                            checkedTrackColor = BurtonSand,
+                            uncheckedThumbColor = BurtonMute,
+                            uncheckedTrackColor = BurtonElevated,
+                            disabledCheckedTrackColor = BurtonSand.copy(alpha = 0.4f),
+                        ),
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(32.dp))
     }
 }

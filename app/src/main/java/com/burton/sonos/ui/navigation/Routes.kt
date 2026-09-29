@@ -4,15 +4,16 @@ object Routes {
     const val ROOMS = "rooms"
     const val ROOM = "room/{groupId}"
     const val SOURCES = "sources"
+    const val SEARCH = "search"
     const val BROWSE = "browse/{objectId}?title={title}"
-    const val SPOTIFY = "spotify"
-    const val SPOTIFY_BROWSE = "spotifyBrowse/{itemId}?title={title}"
+    const val ALARMS = "alarms"
+    const val ALARM_EDIT = "alarm/{alarmId}"
 
     fun room(groupId: String) = "room/${enc(groupId)}"
     fun browse(objectId: String, title: String) =
         "browse/${enc(objectId)}?title=${enc(title)}"
-    fun spotifyBrowse(itemId: String, title: String) =
-        "spotifyBrowse/${enc(itemId)}?title=${enc(title)}"
+    fun alarmEdit(alarmId: String) = "alarm/${enc(alarmId)}"
+    fun alarmNew() = "alarm/new"
 
     private fun enc(value: String) = android.net.Uri.encode(value)
 }

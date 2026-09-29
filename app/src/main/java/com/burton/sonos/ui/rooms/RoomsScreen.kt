@@ -107,6 +107,7 @@ fun RoomsScreen(
                     items(household.groups, key = { it.id }) { group ->
                         RoomCard(
                             name = household.groupName(group),
+                            grouped = household.isGrouped(group),
                             playback = snapshot.nowPlaying[group.id],
                             selected = group.id == snapshot.selectedGroupId,
                             onClick = {
@@ -124,6 +125,7 @@ fun RoomsScreen(
 @Composable
 private fun RoomCard(
     name: String,
+    grouped: Boolean,
     playback: NowPlaying?,
     selected: Boolean,
     onClick: () -> Unit,
@@ -146,6 +148,9 @@ private fun RoomCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (grouped) {
+                Text("Grouped", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = playback?.displayTitle ?: "Not playing",

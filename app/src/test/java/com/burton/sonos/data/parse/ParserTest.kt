@@ -1,7 +1,10 @@
 package com.burton.sonos.data.parse
 
+import com.burton.sonos.data.library.LibrarySearch
+import com.burton.sonos.domain.Alarm
+import com.burton.sonos.domain.daysFromRecurrence
+import com.burton.sonos.domain.recurrenceFromDays
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ZoneGroupStateParserTest {
@@ -93,45 +96,62 @@ class DidlLiteParserTest {
     }
 }
 
-class MusicServicesParserTest {
+class AlarmListParserTest {
     @Test
-    fun findsSpotify() {
+    fun parsesHouseholdAlarms() {
         val xml = """
-            <Services>
-              <Service Id="9" Name="Spotify" Uri="http://spotify.com/smapi" SecureUri="https://spotify.com/smapi" Capabilities="0">
-                <Policy Auth="AppLink"/>
-              </Service>
-            </Services>
+            <Alarms>
+              <Alarm ID="8" StartTime="07:15:00" Duration="02:00:00" Recurrence="WEEKDAYS" Enabled="1"
+                RoomUUID="RINCON_AAA" ProgramURI="x-rincon-buzzer:0" ProgramMetaData=""
+                PlayMode="NORMAL" Volume="25" IncludeLinkedZones="0"/>
+              <Alarm ID="9" StartTime="09:00:00" Duration="01:00:00" Recurrence="ON_135" Enabled="0"
+                RoomUUID="RINCON_BBB" ProgramURI="x-rincon-queue:RINCON_BBB#0" ProgramMetaData=""
+                PlayMode="SHUFFLE" Volume="40" IncludeLinkedZones="1"/>
+            </Alarms>
         """.trimIndent()
-        val services = MusicServicesParser.parse(xml)
-        assertEquals(1, services.size)
-        assertTrue(services[0].isSpotify)
-        assertEquals("2311", services[0].serviceType)
-        assertEquals("AppLink", services[0].auth)
+        val alarms = AlarmListParser.parse(xml)
+        assertEquals(2, alarms.size)
+        assertEquals("8", alarms[0].id)
+        assertEquals("07:15:00", alarms[0].startTime)
+        assertEquals("WEEKDAYS", alarms[0].recurrence)
+        assertEquals(true, alarms[0].enabled)
+        assertEquals("RINCON_AAA", alarms[0].roomUuid)
+        assertEquals(25, alarms[0].volume)
+        assertEquals(false, alarms[0].includeLinkedZones)
+        assertEquals(false, alarms[1].enabled)
+        assertEquals(true, alarms[1].includeLinkedZones)
+        assertEquals("Weekdays", alarms[0].displayRecurrence())
+        assertEquals("Mon Wed Fri", alarms[1].displayRecurrence())
+    }
+
+    @Test
+    fun parsesSoapEscapedAlarmList() {
+        val xml = "&lt;Alarms&gt;&lt;Alarm ID=&quot;1&quot; StartTime=&quot;06:30:00&quot; Recurrence=&quot;DAILY&quot; Enabled=&quot;1&quot; RoomUUID=&quot;RINCON_X&quot; ProgramURI=&quot;x-rincon-buzzer:0&quot; Volume=&quot;10&quot; IncludeLinkedZones=&quot;0&quot;/&gt;&lt;/Alarms&gt;"
+        val alarms = AlarmListParser.parse(xml)
+        assertEquals(1, alarms.size)
+        assertEquals("06:30:00", alarms[0].startTime)
+        assertEquals("Daily", alarms[0].displayRecurrence())
     }
 }
 
-class AccountsParserTest {
+class AlarmRecurrenceTest {
     @Test
-    fun skipsDeletedAccounts() {
-        val xml = """
-            <ZPSupportInfo>
-              <Accounts>
-                <Account Type="2311" SerialNum="8" Deleted="0">
-                  <UN>user</UN>
-                  <NN>Home</NN>
-                  <Key>abc</Key>
-                  <OADevID>dev</OADevID>
-                </Account>
-                <Account Type="2311" SerialNum="9" Deleted="1">
-                  <UN>old</UN>
-                </Account>
-              </Accounts>
-            </ZPSupportInfo>
-        """.trimIndent()
-        val accounts = AccountsParser.parse(xml)
-        assertEquals(1, accounts.size)
-        assertEquals("Home", accounts[0].nickname)
-        assertEquals("2311", accounts[0].serviceType)
+    fun mapsCustomDays() {
+        assertEquals("WEEKDAYS", recurrenceFromDays(setOf(1, 2, 3, 4, 5)))
+        assertEquals("ON_16", recurrenceFromDays(setOf(1, 6)))
+        assertEquals(setOf(1, 2, 3, 4, 5), daysFromRecurrence("WEEKDAYS"))
+        assertEquals(setOf(1, 6), daysFromRecurrence("ON_16"))
+        assertEquals("07:05:00", Alarm.timeString(7, 5))
     }
 }
+
+class LibrarySearchTest {
+    @Test
+    fun buildsLibraryObjectIds() {
+        assertEquals("A:TRACKS:Night Drive", LibrarySearch.objectId("A:TRACKS", "  Night Drive  "))
+        assertEquals("A:ALBUM:Getz/Gilberto", LibrarySearch.objectId("A:ALBUM", "Getz/Gilberto"))
+        assertEquals(6, LibrarySearch.categories.size)
+    }
+}
+
+

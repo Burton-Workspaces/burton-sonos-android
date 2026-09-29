@@ -36,6 +36,11 @@ data class Household(
 
     fun coordinator(group: ZoneGroup): Player? = player(group.coordinatorUuid)
 
+    fun visibleMembers(group: ZoneGroup): List<Player> =
+        group.memberUuids.mapNotNull { uuid -> player(uuid)?.takeUnless { it.invisible } }
+
+    fun isGrouped(group: ZoneGroup): Boolean = visibleMembers(group).size > 1
+
     fun groupName(group: ZoneGroup): String {
         val names = group.memberUuids.mapNotNull { uuid ->
             player(uuid)?.takeUnless { it.invisible }?.name
@@ -106,32 +111,11 @@ data class BrowseItem(
     val canPlay: Boolean get() = !uri.isNullOrBlank()
 }
 
-data class MusicServiceDescriptor(
-    val id: String,
-    val name: String,
-    val serviceType: String,
-    val auth: String,
-    val uri: String,
-    val secureUri: String,
-    val capabilities: String,
-) {
-    val isSpotify: Boolean
-        get() = name.equals("Spotify", ignoreCase = true) || id == SPOTIFY_SERVICE_ID
-
-    companion object {
-        const val SPOTIFY_SERVICE_ID = "9"
-        const val SPOTIFY_SERVICE_TYPE = "2311"
-    }
-}
-
-data class LinkedAccount(
-    val serialNumber: String,
-    val serviceType: String,
-    val nickname: String,
-    val username: String,
-    val key: String,
-    val oaDeviceId: String,
+data class LibrarySearchSection(
+    val title: String,
+    val items: List<BrowseItem>,
 )
+
 
 data class SystemSource(
     val id: String,
@@ -150,20 +134,101 @@ data class SystemSource(
         RADIO,
         LINE_IN,
         TV,
-        SERVICE,
     }
 }
 
-data class SpotifyLinkSession(
-    val regUrl: String,
-    val linkCode: String,
-    val linkDeviceId: String,
-    val householdId: String,
-    val secureUri: String,
-    val serviceType: String,
-)
+data class Alarm(
+    val id: String,
+    val startTime: String,
+    val duration: String,
+    val recurrence: String,
+    val enabled: Boolean,
+    val roomUuid: String,
+    val programUri: String,
+    val programMetaData: String,
+    val playMode: String,
+    val volume: Int,
+    val includeLinkedZones: Boolean,
+) {
+    val hour: Int get() = startTime.substringBefore(":").toIntOrNull() ?: 7
+    val minute: Int get() = startTime.split(":").getOrNull(1)?.toIntOrNull() ?: 0
 
-data class SpotifyAuthTokens(
-    val authToken: String,
-    val privateKey: String,
-)
+    fun displayTime(is24Hour: Boolean): String {
+        if (is24Hour) return "%02d:%02d".format(hour, minute)
+        val amPm = if (hour < 12) "AM" else "PM"
+        val hour12 = when {
+            hour == 0 -> 12
+            hour > 12 -> hour - 12
+            else -> hour
+        }
+        return "$hour12:%02d $amPm".format(minute)
+    }
+
+    fun displayRecurrence(): String = when (recurrence) {
+        "ONCE" -> "Once"
+        "WEEKDAYS" -> "Weekdays"
+        "WEEKENDS" -> "Weekends"
+        "DAILY" -> "Daily"
+        else -> customDaysLabel(recurrence)
+    }
+
+    val isBuzzer: Boolean get() = programUri.startsWith("x-rincon-buzzer")
+
+    companion object {
+        const val BUZZER_URI = "x-rincon-buzzer:0"
+        const val DEFAULT_DURATION = "02:00:00"
+
+        fun timeString(hour: Int, minute: Int): String =
+            "%02d:%02d:00".format(hour.coerceIn(0, 23), minute.coerceIn(0, 59))
+
+        fun draft(
+            roomUuid: String,
+            hour: Int = 7,
+            minute: Int = 0,
+        ): Alarm = Alarm(
+            id = "",
+            startTime = timeString(hour, minute),
+            duration = DEFAULT_DURATION,
+            recurrence = "WEEKDAYS",
+            enabled = true,
+            roomUuid = roomUuid,
+            programUri = BUZZER_URI,
+            programMetaData = "",
+            playMode = "NORMAL",
+            volume = 25,
+            includeLinkedZones = false,
+        )
+    }
+}
+
+fun customDaysLabel(raw: String): String {
+    if (!raw.startsWith("ON_") || raw.length <= 3) return raw
+    val days = raw.removePrefix("ON_").mapNotNull { it.digitToIntOrNull() }.toSet()
+    if (days == (1..7).toSet()) return "Daily"
+    val names = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    return days.sorted().joinToString(" ") { names.getOrElse(it - 1) { "?" } }
+}
+
+fun recurrenceFromDays(days: Set<Int>): String {
+    val normalized = days.filter { it in 1..7 }.toSet()
+    return when (normalized) {
+        setOf(1, 2, 3, 4, 5, 6, 7) -> "DAILY"
+        setOf(1, 2, 3, 4, 5) -> "WEEKDAYS"
+        setOf(6, 7) -> "WEEKENDS"
+        emptySet<Int>() -> "ONCE"
+        else -> "ON_" + (1..7).filter { it in normalized }.joinToString("")
+    }
+}
+
+fun daysFromRecurrence(raw: String): Set<Int> = when (raw) {
+    "ONCE" -> emptySet()
+    "WEEKDAYS" -> setOf(1, 2, 3, 4, 5)
+    "WEEKENDS" -> setOf(6, 7)
+    "DAILY" -> (1..7).toSet()
+    else -> if (raw.startsWith("ON_")) {
+        raw.removePrefix("ON_").mapNotNull { it.digitToIntOrNull() }.filter { it in 1..7 }.toSet()
+    } else {
+        (1..7).toSet()
+    }
+}
+

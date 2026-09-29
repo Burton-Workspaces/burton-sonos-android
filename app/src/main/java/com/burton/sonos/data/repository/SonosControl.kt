@@ -1,19 +1,16 @@
 package com.burton.sonos.data.repository
 
-import com.burton.sonos.data.parse.AccountsParser
+import com.burton.sonos.data.parse.AlarmListParser
 import com.burton.sonos.data.parse.DeviceDescriptionParser
 import com.burton.sonos.data.parse.DidlLiteParser
-import com.burton.sonos.data.parse.MusicServicesParser
 import com.burton.sonos.data.parse.ZoneGroupStateParser
 import com.burton.sonos.data.soap.SoapClient
 import com.burton.sonos.data.soap.SonosServices
+import com.burton.sonos.domain.Alarm
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.Household
-import com.burton.sonos.domain.LinkedAccount
-import com.burton.sonos.domain.MusicServiceDescriptor
 import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.domain.Player
-import com.burton.sonos.domain.SpotifyAuthTokens
 import com.burton.sonos.domain.SystemSource
 import com.burton.sonos.domain.Track
 import com.burton.sonos.domain.TransportState
@@ -253,50 +250,87 @@ class SonosControl @Inject constructor(
         playUri(coordinator, "x-sonos-htastream:$sourceUuid:spdif", "")
     }
 
-    suspend fun musicServices(player: Player): List<MusicServiceDescriptor> {
-        val xml = soap.action(
-            baseUrl = player.baseUrl,
-            controlPath = SonosServices.MUSIC_SERVICES_PATH,
-            serviceType = SonosServices.MUSIC_SERVICES,
-            action = "ListAvailableServices",
-        )["AvailableServiceDescriptorList"].orEmpty()
-        return MusicServicesParser.parse(xml)
-    }
-
-    suspend fun accounts(player: Player): List<LinkedAccount> {
-        val xml = soap.get("${player.baseUrl}/status/accounts")
-        return AccountsParser.parse(xml)
-    }
-
-    suspend fun serialNumber(player: Player): String =
+    suspend fun joinGroup(member: Player, coordinatorUuid: String) {
         soap.action(
-            baseUrl = player.baseUrl,
-            controlPath = SonosServices.DEVICE_PROPERTIES_PATH,
-            serviceType = SonosServices.DEVICE_PROPERTIES,
-            action = "GetZoneInfo",
-        )["SerialNumber"].orEmpty()
-
-    suspend fun addOAuthAccount(
-        player: Player,
-        serviceType: String,
-        tokens: SpotifyAuthTokens,
-        householdId: String,
-    ) {
-        soap.action(
-            baseUrl = player.baseUrl,
-            controlPath = SonosServices.SYSTEM_PROPERTIES_PATH,
-            serviceType = SonosServices.SYSTEM_PROPERTIES,
-            action = "AddOAuthAccountX",
+            baseUrl = member.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "SetAVTransportURI",
             args = mapOf(
-                "AccountType" to serviceType,
-                "AccountToken" to tokens.authToken,
-                "AccountKey" to tokens.privateKey,
-                "OAuthDeviceID" to householdId,
-                "AuthorizationCode" to "",
-                "RedirectURI" to "",
-                "UserIdHashCode" to "",
+                "InstanceID" to "0",
+                "CurrentURI" to "x-rincon:$coordinatorUuid",
+                "CurrentURIMetaData" to "",
             ),
         )
+    }
+
+    suspend fun ungroup(player: Player) {
+        soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "BecomeCoordinatorOfStandaloneGroup",
+            args = mapOf("InstanceID" to "0"),
+        )
+    }
+
+    suspend fun listAlarms(player: Player): List<Alarm> {
+        val xml = soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.ALARM_CLOCK_PATH,
+            serviceType = SonosServices.ALARM_CLOCK,
+            action = "ListAlarms",
+        )["CurrentAlarmList"].orEmpty()
+        return AlarmListParser.parse(xml)
+    }
+
+    suspend fun createAlarm(player: Player, alarm: Alarm): String {
+        return soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.ALARM_CLOCK_PATH,
+            serviceType = SonosServices.ALARM_CLOCK,
+            action = "CreateAlarm",
+            args = alarmArgs(alarm, includeId = false),
+        )["AssignedID"].orEmpty()
+    }
+
+    suspend fun updateAlarm(player: Player, alarm: Alarm) {
+        soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.ALARM_CLOCK_PATH,
+            serviceType = SonosServices.ALARM_CLOCK,
+            action = "UpdateAlarm",
+            args = alarmArgs(alarm, includeId = true),
+        )
+    }
+
+    suspend fun destroyAlarm(player: Player, alarmId: String) {
+        soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.ALARM_CLOCK_PATH,
+            serviceType = SonosServices.ALARM_CLOCK,
+            action = "DestroyAlarm",
+            args = mapOf("ID" to alarmId),
+        )
+    }
+
+    private fun alarmArgs(alarm: Alarm, includeId: Boolean): Map<String, String> {
+        val args = linkedMapOf(
+            "StartLocalTime" to alarm.startTime,
+            "Duration" to alarm.duration.ifBlank { Alarm.DEFAULT_DURATION },
+            "Recurrence" to alarm.recurrence,
+            "Enabled" to if (alarm.enabled) "1" else "0",
+            "RoomUUID" to alarm.roomUuid,
+            "ProgramURI" to alarm.programUri.ifBlank { Alarm.BUZZER_URI },
+            "ProgramMetaData" to alarm.programMetaData,
+            "PlayMode" to alarm.playMode.ifBlank { "NORMAL" },
+            "Volume" to alarm.volume.coerceIn(0, 100).toString(),
+            "IncludeLinkedZones" to if (alarm.includeLinkedZones) "1" else "0",
+        )
+        if (includeId) {
+            return linkedMapOf("ID" to alarm.id) + args
+        }
+        return args
     }
 
     fun localSources(household: Household): List<SystemSource> {

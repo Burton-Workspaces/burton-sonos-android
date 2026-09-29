@@ -3,6 +3,7 @@ package com.burton.sonos.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PlayCircle
@@ -29,19 +30,29 @@ fun TransportRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onPrevious) {
-            Icon(Icons.Rounded.SkipPrevious, contentDescription = "Previous", tint = BurtonIvory)
+        IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
+            Icon(
+                Icons.Rounded.SkipPrevious,
+                contentDescription = "Previous",
+                tint = BurtonIvory,
+                modifier = Modifier.size(44.dp),
+            )
         }
-        IconButton(onClick = onToggle) {
+        IconButton(onClick = onToggle, modifier = Modifier.size(96.dp)) {
             Icon(
                 imageVector = if (isPlaying) Icons.Rounded.PauseCircle else Icons.Rounded.PlayCircle,
                 contentDescription = "Play or pause",
                 tint = BurtonIvory,
-                modifier = Modifier.fillMaxWidth(0.18f),
+                modifier = Modifier.size(88.dp),
             )
         }
-        IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.SkipNext, contentDescription = "Next", tint = BurtonIvory)
+        IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
+            Icon(
+                Icons.Rounded.SkipNext,
+                contentDescription = "Next",
+                tint = BurtonIvory,
+                modifier = Modifier.size(44.dp),
+            )
         }
     }
 }

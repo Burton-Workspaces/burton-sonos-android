@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -48,15 +49,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.burton.sonos.ui.alarms.AlarmEditorScreen
+import com.burton.sonos.ui.alarms.AlarmsScreen
 import com.burton.sonos.ui.browse.BrowseScreen
 import com.burton.sonos.ui.components.NowPlayingBar
 import com.burton.sonos.ui.navigation.Routes
 import com.burton.sonos.ui.room.RoomDetailScreen
 import com.burton.sonos.ui.rooms.RoomsScreen
 import com.burton.sonos.ui.rooms.RoomsViewModel
+import com.burton.sonos.ui.search.SearchScreen
 import com.burton.sonos.ui.sources.SourcesScreen
-import com.burton.sonos.ui.spotify.SpotifyBrowseScreen
-import com.burton.sonos.ui.spotify.SpotifyScreen
 import com.burton.sonos.ui.theme.BurtonBlack
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
@@ -144,7 +146,7 @@ private fun BurtonApp() {
     val snapshot by roomsViewModel.state.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
-    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SPOTIFY)
+    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SEARCH, Routes.ALARMS)
     val showChrome = route in tabs
     Scaffold(
         modifier = Modifier
@@ -183,11 +185,18 @@ private fun BurtonApp() {
                             colors = navColors(route == Routes.SOURCES),
                         )
                         NavigationBarItem(
-                            selected = route == Routes.SPOTIFY,
-                            onClick = { navController.navigate(Routes.SPOTIFY) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.MusicNote, contentDescription = "Spotify") },
-                            label = { Text("Spotify") },
-                            colors = navColors(route == Routes.SPOTIFY),
+                            selected = route == Routes.SEARCH,
+                            onClick = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
+                            icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+                            label = { Text("Search") },
+                            colors = navColors(route == Routes.SEARCH),
+                        )
+                        NavigationBarItem(
+                            selected = route == Routes.ALARMS,
+                            onClick = { navController.navigate(Routes.ALARMS) { launchSingleTop = true } },
+                            icon = { Icon(Icons.Rounded.Alarm, contentDescription = "Alarms") },
+                            label = { Text("Alarms") },
+                            colors = navColors(route == Routes.ALARMS),
                         )
                     }
                 }
@@ -213,7 +222,11 @@ private fun BurtonApp() {
             composable(Routes.SOURCES) {
                 SourcesScreen(
                     onBrowse = { id, title -> navController.navigate(Routes.browse(id, title)) },
-                    onSpotify = { navController.navigate(Routes.SPOTIFY) },
+                )
+            }
+            composable(Routes.SEARCH) {
+                SearchScreen(
+                    onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
                 )
             }
             composable(
@@ -228,22 +241,17 @@ private fun BurtonApp() {
                     onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
                 )
             }
-            composable(Routes.SPOTIFY) {
-                SpotifyScreen(
-                    onOpenFolder = { id, title -> navController.navigate(Routes.spotifyBrowse(id, title)) },
+            composable(Routes.ALARMS) {
+                AlarmsScreen(
+                    onEdit = { navController.navigate(Routes.alarmEdit(it)) },
+                    onCreate = { navController.navigate(Routes.alarmNew()) },
                 )
             }
             composable(
-                Routes.SPOTIFY_BROWSE,
-                arguments = listOf(
-                    navArgument("itemId") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType; defaultValue = "Spotify" },
-                ),
+                Routes.ALARM_EDIT,
+                arguments = listOf(navArgument("alarmId") { type = NavType.StringType }),
             ) {
-                SpotifyBrowseScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenFolder = { id, title -> navController.navigate(Routes.spotifyBrowse(id, title)) },
-                )
+                AlarmEditorScreen(onBack = { navController.popBackStack() })
             }
         }
     }

@@ -1,20 +1,22 @@
 package com.burton.sonos.data.repository
 
 import com.burton.sonos.data.discovery.SpeakerDiscovery
-import com.burton.sonos.data.smapi.SmapiClient
+import com.burton.sonos.data.library.LibrarySearch
+import com.burton.sonos.domain.Alarm
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.Household
-import com.burton.sonos.domain.LinkedAccount
-import com.burton.sonos.domain.MusicServiceDescriptor
+import com.burton.sonos.domain.LibrarySearchSection
 import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.domain.Player
-import com.burton.sonos.domain.SpotifyLinkSession
 import com.burton.sonos.domain.SystemSource
 import com.burton.sonos.domain.ZoneGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,8 +32,7 @@ import javax.inject.Singleton
 data class SonosSnapshot(
     val household: Household? = null,
     val nowPlaying: Map<String, NowPlaying> = emptyMap(),
-    val services: List<MusicServiceDescriptor> = emptyList(),
-    val accounts: List<LinkedAccount> = emptyList(),
+    val alarms: List<Alarm> = emptyList(),
     val selectedGroupId: String? = null,
     val scanning: Boolean = false,
     val error: String? = null,
@@ -45,22 +46,12 @@ data class SonosSnapshot(
 
     val selectedPlayback: NowPlaying?
         get() = selectedGroup?.id?.let { nowPlaying[it] }
-
-    val spotifyService: MusicServiceDescriptor?
-        get() = services.firstOrNull { it.isSpotify }
-
-    val spotifyAccount: LinkedAccount?
-        get() = accounts.firstOrNull {
-            it.serviceType == MusicServiceDescriptor.SPOTIFY_SERVICE_TYPE ||
-                it.serviceType == spotifyService?.serviceType
-        }
 }
 
 @Singleton
 class SonosRepository @Inject constructor(
     private val discovery: SpeakerDiscovery,
     private val control: SonosControl,
-    private val smapi: SmapiClient,
     private val prefs: LocalPrefs,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -102,8 +93,11 @@ class SonosRepository @Inject constructor(
                     control.householdFrom(ip)
                 }
                 val savedGroup = prefs.selectedGroup()
+                val previousCoordinator = _state.value.selectedGroup?.coordinatorUuid
                 val groupId = when {
                     household.groups.any { it.id == _state.value.selectedGroupId } -> _state.value.selectedGroupId
+                    previousCoordinator != null && household.groups.any { it.coordinatorUuid == previousCoordinator } ->
+                        household.groups.first { it.coordinatorUuid == previousCoordinator }.id
                     household.groups.any { it.id == savedGroup } -> savedGroup
                     else -> household.groups.firstOrNull()?.id
                 }
@@ -111,15 +105,14 @@ class SonosRepository @Inject constructor(
                     val coordinator = household.coordinator(group) ?: return@associate group.id to null
                     group.id to runCatching { control.nowPlaying(group, coordinator) }.getOrNull()
                 }.filterValues { it != null }.mapValues { it.value as NowPlaying }
-                val anyPlayer = household.players.firstOrNull()
-                val services = anyPlayer?.let { runCatching { control.musicServices(it) }.getOrNull() }.orEmpty()
-                val accounts = anyPlayer?.let { runCatching { control.accounts(it) }.getOrNull() }.orEmpty()
+                val alarms = household.players.firstOrNull()?.let { player ->
+                    runCatching { control.listAlarms(player) }.getOrNull()
+                }.orEmpty()
                 _state.update {
                     it.copy(
                         household = household,
                         nowPlaying = playback,
-                        services = services,
-                        accounts = accounts,
+                        alarms = alarms,
                         selectedGroupId = groupId,
                         scanning = false,
                         error = null,
@@ -183,6 +176,24 @@ class SonosRepository @Inject constructor(
         return control.browse(player, objectId)
     }
 
+    suspend fun searchLibrary(query: String): List<LibrarySearchSection> {
+        val term = query.trim()
+        if (term.isEmpty()) return emptyList()
+        val player = _state.value.selectedCoordinator
+            ?: _state.value.household?.players?.firstOrNull()
+            ?: return emptyList()
+        return coroutineScope {
+            LibrarySearch.categories.map { (title, prefix) ->
+                async {
+                    val items = runCatching {
+                        control.browse(player, LibrarySearch.objectId(prefix, term), count = 40)
+                    }.getOrDefault(emptyList())
+                    LibrarySearchSection(title = title, items = items)
+                }
+            }.awaitAll().filter { it.items.isNotEmpty() }
+        }
+    }
+
     suspend fun playItem(item: BrowseItem) {
         val coordinator = _state.value.selectedCoordinator ?: return
         val uri = item.uri ?: return
@@ -206,51 +217,52 @@ class SonosRepository @Inject constructor(
         refresh(scan = false)
     }
 
-    suspend fun beginSpotifyLink(): SpotifyLinkSession {
-        val snapshot = _state.value
-        val player = snapshot.selectedCoordinator ?: snapshot.household?.players?.firstOrNull()
-            ?: error("No Sonos player on the network")
-        val spotify = snapshot.spotifyService ?: error("This system does not list Spotify as an available service")
-        val householdId = snapshot.household?.id.orEmpty()
-        val deviceId = control.serialNumber(player).ifBlank { player.uuid }
-        return smapi.beginLink(
-            secureUri = spotify.secureUri,
-            householdId = householdId,
-            deviceId = deviceId,
-            serviceType = spotify.serviceType,
-        )
-    }
-
-    suspend fun completeSpotifyLink(session: SpotifyLinkSession): Boolean {
-        val snapshot = _state.value
-        val player = snapshot.selectedCoordinator ?: snapshot.household?.players?.firstOrNull()
-            ?: return false
-        val deviceId = control.serialNumber(player).ifBlank { player.uuid }
-        val tokens = smapi.pollAuthToken(session, deviceId) ?: return false
-        control.addOAuthAccount(player, session.serviceType, tokens, session.householdId)
-        prefs.saveSpotifyTokens(tokens)
+    suspend fun setGrouped(memberUuid: String, coordinatorUuid: String, grouped: Boolean) {
+        val player = _state.value.household?.player(memberUuid) ?: return
+        if (grouped) {
+            control.joinGroup(player, coordinatorUuid)
+        } else {
+            control.ungroup(player)
+        }
+        delay(700)
         refresh(scan = false)
-        return true
     }
 
-    suspend fun browseSpotify(itemId: String = "root"): List<BrowseItem> {
-        val snapshot = _state.value
-        val player = snapshot.selectedCoordinator ?: snapshot.household?.players?.firstOrNull()
-            ?: return emptyList()
-        val spotify = snapshot.spotifyService ?: return emptyList()
-        val account = snapshot.spotifyAccount
-        val stored = prefs.spotifyTokens()
-        val deviceId = control.serialNumber(player).ifBlank { player.uuid }
-        return smapi.getMetadata(
-            secureUri = spotify.secureUri,
-            deviceId = deviceId,
-            householdId = snapshot.household?.id.orEmpty(),
-            token = stored?.authToken ?: account?.username?.ifBlank { null },
-            key = stored?.privateKey ?: account?.key?.ifBlank { null },
-            itemId = itemId,
-            speakerBaseUrl = player.baseUrl,
-            serviceId = spotify.id,
-            serial = account?.serialNumber ?: "1",
-        )
+    suspend fun ungroupAll(coordinatorUuid: String) {
+        val household = _state.value.household ?: return
+        val group = household.groupFor(coordinatorUuid) ?: return
+        household.visibleMembers(group)
+            .filter { it.uuid != coordinatorUuid }
+            .forEach { control.ungroup(it) }
+        delay(700)
+        refresh(scan = false)
+    }
+
+    private fun alarmSpeaker(): Player? = _state.value.household?.players?.firstOrNull()
+
+    suspend fun saveAlarm(alarm: Alarm) {
+        val player = alarmSpeaker() ?: return
+        if (alarm.id.isBlank()) {
+            control.createAlarm(player, alarm)
+        } else {
+            control.updateAlarm(player, alarm)
+        }
+        refresh(scan = false)
+    }
+
+    suspend fun setAlarmEnabled(alarm: Alarm, enabled: Boolean) {
+        val player = alarmSpeaker() ?: return
+        control.updateAlarm(player, alarm.copy(enabled = enabled))
+        _state.update { snapshot ->
+            snapshot.copy(
+                alarms = snapshot.alarms.map { if (it.id == alarm.id) it.copy(enabled = enabled) else it },
+            )
+        }
+    }
+
+    suspend fun deleteAlarm(alarmId: String) {
+        val player = alarmSpeaker() ?: return
+        control.destroyAlarm(player, alarmId)
+        refresh(scan = false)
     }
 }
