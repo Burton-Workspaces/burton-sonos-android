@@ -1,0 +1,4 @@
+-keepattributes SourceFile,LineNumberTable
+-keep class com.burton.sonos.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
