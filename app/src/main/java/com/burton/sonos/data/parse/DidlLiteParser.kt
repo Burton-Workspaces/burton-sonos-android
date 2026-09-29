@@ -6,9 +6,7 @@ import org.w3c.dom.Element
 
 object DidlLiteParser {
     fun parseItems(didl: String, speakerBaseUrl: String): List<BrowseItem> {
-        if (didl.isBlank()) return emptyList()
-        val xml = ensureDidl(Xml.unescapeXml(didl).ifBlank { didl })
-        val root = runCatching { Xml.parse(xml).rootElement() }.getOrNull() ?: return emptyList()
+        val root = parseRoot(didl) ?: return emptyList()
         val nodes = root.descendants("item") + root.descendants("container")
         return nodes.map { el ->
             val upnpClass = el.childText("class")
@@ -52,17 +50,26 @@ object DidlLiteParser {
         }
     }
 
-    private fun albumFrom(didl: String): String {
-        val xml = ensureDidl(Xml.unescapeXml(didl).ifBlank { didl })
-        val root = runCatching { Xml.parse(xml).rootElement() }.getOrNull() ?: return ""
-        return root.descendants("album").firstOrNull()?.textContent?.trim().orEmpty()
-    }
+    private fun albumFrom(didl: String): String =
+        parseRoot(didl)?.descendants("album")?.firstOrNull()?.textContent?.trim().orEmpty()
 
     private fun durationSecondsFromRes(didl: String): Int {
-        val xml = ensureDidl(Xml.unescapeXml(didl).ifBlank { didl })
-        val root = runCatching { Xml.parse(xml).rootElement() }.getOrNull() ?: return 0
-        val duration = root.descendants("res").firstOrNull()?.getAttribute("duration").orEmpty()
+        val duration = parseRoot(didl)?.descendants("res")?.firstOrNull()?.getAttribute("duration").orEmpty()
         return parseHms(duration)
+    }
+
+    private fun parseRoot(didl: String): Element? {
+        if (didl.isBlank() || didl.equals("NOT_IMPLEMENTED", ignoreCase = true)) return null
+        val unescaped = Xml.unescapeXml(didl)
+        val candidates = listOf(didl, unescaped)
+            .map { it.trim() }
+            .filter { it.startsWith("<") }
+            .distinct()
+        for (candidate in candidates) {
+            val root = runCatching { Xml.parse(ensureDidl(candidate)).rootElement() }.getOrNull()
+            if (root != null) return root
+        }
+        return null
     }
 
     fun parseHms(value: String): Int {

@@ -82,31 +82,22 @@ class SonosControl @Inject constructor(
             action = "GetVolume",
             args = mapOf("InstanceID" to "0", "Channel" to "Master"),
         )["CurrentVolume"]?.toIntOrNull() ?: 0
-        val muted = soap.action(
-            baseUrl = coordinator.baseUrl,
-            controlPath = SonosServices.RENDERING_CONTROL_PATH,
-            serviceType = SonosServices.RENDERING_CONTROL,
-            action = "GetMute",
-            args = mapOf("InstanceID" to "0", "Channel" to "Master"),
-        )["CurrentMute"] == "1"
+        val muted = runCatching {
+            soap.action(
+                baseUrl = coordinator.baseUrl,
+                controlPath = SonosServices.RENDERING_CONTROL_PATH,
+                serviceType = SonosServices.RENDERING_CONTROL,
+                action = "GetMute",
+                args = mapOf("InstanceID" to "0", "Channel" to "Master"),
+            )["CurrentMute"] == "1"
+        }.getOrDefault(false)
         val meta = position["TrackMetaData"].orEmpty()
         val uri = position["TrackURI"].orEmpty()
-        val track = if (meta.isBlank() || meta == "NOT_IMPLEMENTED") {
-            if (uri.isBlank()) null else Track(
-                title = "Unknown",
-                artist = "",
-                album = "",
-                albumArtUrl = null,
-                uri = uri,
-                durationSeconds = DidlLiteParser.parseHms(position["TrackDuration"].orEmpty()),
-            )
-        } else {
-            DidlLiteParser.parseTrack(meta, coordinator.baseUrl, uri)?.copy(
-                durationSeconds = DidlLiteParser.parseHms(position["TrackDuration"].orEmpty())
-                    .takeIf { it > 0 }
-                    ?: DidlLiteParser.parseTrack(meta, coordinator.baseUrl, uri)?.durationSeconds ?: 0,
-            )
-        }
+        val duration = DidlLiteParser.parseHms(position["TrackDuration"].orEmpty())
+        val parsed = meta.takeUnless { it.isBlank() || it.equals("NOT_IMPLEMENTED", ignoreCase = true) }
+            ?.let { DidlLiteParser.parseTrack(it, coordinator.baseUrl, uri) }
+        val track = parsed?.copy(durationSeconds = duration.takeIf { it > 0 } ?: parsed.durationSeconds)
+            ?: uri.takeIf { it.isNotBlank() }?.let { fallbackTrack(it, duration) }
         return NowPlaying(
             groupId = group.id,
             coordinatorUuid = coordinator.uuid,
@@ -343,6 +334,25 @@ class SonosControl @Inject constructor(
             }
         }
         return sources
+    }
+
+    private fun fallbackTrack(uri: String, durationSeconds: Int): Track {
+        val title = when {
+            uri.startsWith("x-rincon-stream:") -> "Line-in"
+            uri.startsWith("x-sonos-htastream:") -> "TV"
+            uri.startsWith("x-sonos-vli:") -> "AirPlay"
+            uri.startsWith("x-sonosapi-stream:") || uri.startsWith("x-rincon-mp3radio:") -> "Radio"
+            uri.startsWith("x-rincon-queue:") -> "Queue"
+            else -> "Playing"
+        }
+        return Track(
+            title = title,
+            artist = "",
+            album = "",
+            albumArtUrl = null,
+            uri = uri,
+            durationSeconds = durationSeconds,
+        )
     }
 
     private fun looksLikeHomeTheater(player: Player): Boolean {

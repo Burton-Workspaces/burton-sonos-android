@@ -49,7 +49,7 @@ fun NowPlayingBar(
         AlbumArt(url = track?.albumArtUrl, size = 48.dp, corner = 8.dp)
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = track?.title ?: "Nothing playing",
+                text = track?.title ?: playback?.displayTitle ?: "Nothing playing",
                 style = MaterialTheme.typography.titleMedium,
                 color = BurtonIvory,
                 maxLines = 1,

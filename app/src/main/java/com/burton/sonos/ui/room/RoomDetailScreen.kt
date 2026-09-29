@@ -63,7 +63,7 @@ fun RoomDetailScreen(
         AlbumArt(url = playback?.track?.albumArtUrl, size = 280.dp, corner = 24.dp)
         Spacer(Modifier.height(28.dp))
         Text(
-            text = playback?.track?.title ?: "Nothing playing",
+            text = playback?.track?.title ?: playback?.displayTitle ?: "Nothing playing",
             style = MaterialTheme.typography.headlineMedium,
             color = BurtonIvory,
             textAlign = TextAlign.Center,

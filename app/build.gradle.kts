@@ -78,6 +78,22 @@ android {
     }
 }
 
+afterEvaluate {
+    listOf("assembleRelease", "bundleRelease").forEach { taskName ->
+        tasks.named(taskName).configure {
+            doFirst {
+                check(keystorePropertiesFile.exists()) {
+                    "Release signing is not configured. Copy keystore.properties.example to keystore.properties and create a keystore."
+                }
+                val store = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                check(store.exists()) {
+                    "Release keystore not found: ${store.absolutePath}"
+                }
+            }
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

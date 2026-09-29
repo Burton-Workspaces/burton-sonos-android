@@ -86,7 +86,11 @@ data class NowPlaying(
     val volume: Int,
     val muted: Boolean,
     val positionSeconds: Int,
-)
+) {
+    val displayTitle: String
+        get() = track?.title?.takeIf { it.isNotBlank() }
+            ?: if (state.isPlaying) "Playing" else "Not playing"
+}
 
 data class BrowseItem(
     val id: String,

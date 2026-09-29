@@ -8,7 +8,7 @@ object Routes {
     const val SPOTIFY = "spotify"
     const val SPOTIFY_BROWSE = "spotifyBrowse/{itemId}?title={title}"
 
-    fun room(groupId: String) = "room/$groupId"
+    fun room(groupId: String) = "room/${enc(groupId)}"
     fun browse(objectId: String, title: String) =
         "browse/${enc(objectId)}?title=${enc(title)}"
     fun spotifyBrowse(itemId: String, title: String) =

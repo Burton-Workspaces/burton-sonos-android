@@ -148,7 +148,7 @@ private fun RoomCard(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = playback?.track?.title ?: "Not playing",
+                text = playback?.displayTitle ?: "Not playing",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (selected) BurtonSand else BurtonMute,
                 maxLines = 1,

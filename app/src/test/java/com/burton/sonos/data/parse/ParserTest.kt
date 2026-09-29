@@ -52,6 +52,40 @@ class DidlLiteParserTest {
     }
 
     @Test
+    fun parsesAlreadyUnescapedDidlWithAmpersands() {
+        val didl = """
+            <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
+              <item id="-1" parentID="-1" restricted="true">
+                <res protocolInfo="x-file-cifs:*:audio/flac:*" duration="0:05:05">x-file-cifs://192.168.0.98/media/music/Stan%20Getz%20%26%20Joao%20Gilberto/track.flac</res>
+                <upnp:albumArtURI>/getaa?u=x-file-cifs%3a%2f%2fhost%2ftrack.flac&amp;v=920</upnp:albumArtURI>
+                <dc:title>Para machuchar meu coracao</dc:title>
+                <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+                <dc:creator>Stan Getz &amp; Joao Gilberto</dc:creator>
+                <upnp:album>Getz/Gilberto</upnp:album>
+              </item>
+            </DIDL-Lite>
+        """.trimIndent()
+        val track = DidlLiteParser.parseTrack(didl, "http://192.168.0.101:1400", "")
+        requireNotNull(track)
+        assertEquals("Para machuchar meu coracao", track.title)
+        assertEquals("Stan Getz & Joao Gilberto", track.artist)
+        assertEquals("Getz/Gilberto", track.album)
+        assertEquals(
+            "http://192.168.0.101:1400/getaa?u=x-file-cifs%3a%2f%2fhost%2ftrack.flac&v=920",
+            track.albumArtUrl,
+        )
+    }
+
+    @Test
+    fun stillParsesSoapEscapedDidl() {
+        val didl = "&lt;DIDL-Lite xmlns:dc=&quot;http://purl.org/dc/elements/1.1/&quot; xmlns:upnp=&quot;urn:schemas-upnp-org:metadata-1-0/upnp/&quot; xmlns=&quot;urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/&quot;&gt;&lt;item id=&quot;1&quot; parentID=&quot;0&quot; restricted=&quot;true&quot;&gt;&lt;dc:title&gt;Night Drive&lt;/dc:title&gt;&lt;dc:creator&gt;Analog Heart&lt;/dc:creator&gt;&lt;upnp:class&gt;object.item.audioItem.musicTrack&lt;/upnp:class&gt;&lt;/item&gt;&lt;/DIDL-Lite&gt;"
+        val track = DidlLiteParser.parseTrack(didl, "http://192.168.1.20:1400", "")
+        requireNotNull(track)
+        assertEquals("Night Drive", track.title)
+        assertEquals("Analog Heart", track.artist)
+    }
+
+    @Test
     fun parseHms() {
         assertEquals(0, DidlLiteParser.parseHms("NOT_IMPLEMENTED"))
         assertEquals(125, DidlLiteParser.parseHms("2:05"))
