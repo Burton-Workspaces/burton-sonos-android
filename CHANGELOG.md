@@ -8,3 +8,17 @@ Automatic releases are produced by [release-please](https://github.com/googleapi
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-09-29
+
+### Added
+- Named groups you can create, rename, delete, and form around saved speakers
+- Search overflow actions for favorites, Sonos playlists, play now/next, queue, and replace queue
+- Pulsing panel placeholders on first load
+- Per-room volume sliders on the System screen
+- Hardware volume keys on Now Playing
+
+### Changed
+- Bottom navigation and now playing stay visible on every screen, including Search
+- Live speaker grouping moved off Now Playing into its own modal
+- First load uses a cached household and returns as soon as a speaker is found
