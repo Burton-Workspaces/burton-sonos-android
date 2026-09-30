@@ -2,7 +2,7 @@
 
 A local Android controller for a Sonos household. The phone talks to speakers on the same Wi-Fi using SSDP discovery and the speakers’ UPnP/SOAP APIs. There is no Sonos cloud account, no remote access, and no music-service login in this app.
 
-Signed APKs are published on [GitHub Releases](https://github.com/rconnelly/burton-sonos-android/releases).
+Signed APKs are published on [GitHub Releases](https://github.com/Burton-Workspaces/burton-sonos-android/releases). Droidify / F-Droid: [burton-sonos-fdroid](https://github.com/Burton-Workspaces/burton-sonos-fdroid) (`https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo`).
 
 ## What it does
 
@@ -31,6 +31,7 @@ First launch hydrates the last household from local cache and returns as soon as
 | [Development](docs/development.md) | Build, run, test, project layout |
 | [Build automation](docs/build-automation.md) | GitHub Actions, workflow permissions, signing secrets |
 | [Releases](docs/releases.md) | SemVer, cutting a version, GitHub Releases |
+| [F-Droid / Droidify](docs/fdroid.md) | Self-hosted repo, Fingerprint, Pages publish script |
 | [Contributing](CONTRIBUTING.md) | Conventional Commits (required) |
 
 ## Quick start (debug)

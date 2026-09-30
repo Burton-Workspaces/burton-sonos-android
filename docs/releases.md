@@ -64,3 +64,9 @@ Never commit `keystore.properties` or the keystore.
 ## Manual APK retry
 
 GitHub Actions → **Release assets** → Run workflow → tag `vX.Y.Z` (must already exist and match `version.txt`).
+
+Local equivalent: `./scripts/upload-release-apk.sh 1.3.0` (version must match `version.txt`).
+
+## Droidify / F-Droid
+
+GitHub Releases are not an F-Droid repository. To let Droidify or the F-Droid client install and update the app, host a simple binary repo and publish its URL plus repo **Fingerprint**. See [fdroid.md](fdroid.md) and `./scripts/publish-fdroid-pages.sh`.
