@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.6.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.5.0...v1.6.0) (2026-09-30)
+
+
+### Features
+
+* align F-Droid Pages publish with burton-slack ([c89bdbd](https://github.com/Burton-Workspaces/burton-sonos-android/commit/c89bdbd1dae30523170bad2159ee3b2e30250f55))
+
+
+### Bug Fixes
+
+* **alarms:** parse ListAlarms without double-unescaping metadata ([c8ecfe0](https://github.com/Burton-Workspaces/burton-sonos-android/commit/c8ecfe0cf832901711ba83ba3b040dad7fec1728))
+* **groups:** show household Areas such as Downstairs ([1020c32](https://github.com/Burton-Workspaces/burton-sonos-android/commit/1020c32b93543660a045a2f9d3375776458056bf))
+
 ## [1.5.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.4.1...v1.5.0) (2026-09-30)
 
 
