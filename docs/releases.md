@@ -31,7 +31,7 @@ The **Release** workflow uses `GITHUB_TOKEN`. The repository must allow Actions 
 
 Without that checkbox, release-please can push `release-please--branches--master` but the job fails with *GitHub Actions is not permitted to create or approve pull requests*.
 
-Label updates after tagging are skipped (`skip-labeling: true`) so a GitHub API blip cannot fail the job after the GitHub Release already exists. The APK pack still runs from that workflow and from tag pushes (`release-assets.yml` uploads with `--clobber`).
+The APK pack still runs from that workflow when a release is created, and from tag pushes (`release-assets.yml` uploads with `--clobber`). Squash-merge the release PR if GitHub offers it; a merge commit also works as long as the PR was labeled `autorelease: pending`.
 
 ## CI
 

@@ -10,8 +10,9 @@
 # Jobs:
 #   Release-please
 #     googleapis/release-please-action@v5 reads release-please-config.json and
-#     .release-please-manifest.json. skip-labeling avoids a GitHub API blip
-#     failing the job after the Release already exists.
+#     .release-please-manifest.json. It labels the release PR autorelease: pending
+#     so the following push (after merge) can create tag vX.Y.Z. Do not set
+#     skip-labeling; without that label, merging never tags.
 #     Only runs when github.repository is Burton-Workspaces/burton-sonos-android
 #     so forks do not open release PRs.
 #   Pack release APK
@@ -44,7 +45,6 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          skip-labeling: true
 
   pack:
     name: Pack release APK
