@@ -56,7 +56,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.burton.sonos.ui.alarms.AlarmEditorScreen
 import com.burton.sonos.ui.alarms.AlarmsScreen
 import com.burton.sonos.ui.browse.BrowseScreen
 import com.burton.sonos.ui.components.NowPlayingBar
@@ -303,16 +302,7 @@ private fun BurtonApp() {
                 )
             }
             composable(Routes.ALARMS) {
-                AlarmsScreen(
-                    onEdit = { navController.navigate(Routes.alarmEdit(it)) },
-                    onCreate = { navController.navigate(Routes.alarmNew()) },
-                )
-            }
-            composable(
-                Routes.ALARM_EDIT,
-                arguments = listOf(navArgument("alarmId") { type = NavType.StringType }),
-            ) {
-                AlarmEditorScreen(onBack = { navController.popBackStack() })
+                AlarmsScreen()
             }
         }
     }

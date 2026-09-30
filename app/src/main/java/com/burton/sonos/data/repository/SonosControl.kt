@@ -400,12 +400,15 @@ class SonosControl @Inject constructor(
     }
 
     suspend fun listAlarms(player: Player): List<Alarm> {
-        val xml = soap.action(
+        val result = soap.action(
             baseUrl = player.baseUrl,
             controlPath = SonosServices.ALARM_CLOCK_PATH,
             serviceType = SonosServices.ALARM_CLOCK,
             action = "ListAlarms",
-        )["CurrentAlarmList"].orEmpty()
+        )
+        val xml = result["CurrentAlarmList"].orEmpty().ifBlank {
+            result.values.firstOrNull { it.contains("<Alarm", ignoreCase = true) }.orEmpty()
+        }
         return AlarmListParser.parse(xml)
     }
 

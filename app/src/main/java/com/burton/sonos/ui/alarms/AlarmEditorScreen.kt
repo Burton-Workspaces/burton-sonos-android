@@ -4,28 +4,18 @@ import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -37,6 +27,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.burton.sonos.ui.components.FullScreenModal
 import com.burton.sonos.ui.theme.BurtonCharcoal
 import com.burton.sonos.ui.theme.BurtonDanger
 import com.burton.sonos.ui.theme.BurtonElevated
@@ -59,9 +51,11 @@ import com.burton.sonos.ui.theme.BurtonVoid
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AlarmEditorScreen(
+    alarmId: String,
     onBack: () -> Unit,
-    viewModel: AlarmEditorViewModel = hiltViewModel(),
+    viewModel: AlarmEditorViewModel = hiltViewModel(key = alarmId),
 ) {
+    LaunchedEffect(alarmId) { viewModel.open(alarmId) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val snapshot by viewModel.household.collectAsStateWithLifecycle()
     val players = snapshot.household?.visiblePlayers.orEmpty()
@@ -73,20 +67,23 @@ fun AlarmEditorScreen(
         initialMinute = alarm.minute,
         is24Hour = is24Hour,
     )
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+    FullScreenModal(
+        onDismiss = onBack,
+        title = if (ui.isNew) "Add alarm" else "Edit alarm",
+        actionLabel = if (ui.isNew) "Create alarm" else "Save alarm",
+        actionEnabled = !ui.saving,
+        onAction = { viewModel.save(onBack) },
+        extraFooter = {
+            if (!ui.isNew) {
+                TextButton(
+                    onClick = { viewModel.delete(onBack) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Delete alarm", color = BurtonDanger)
+                }
+            }
+        },
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = BurtonIvory)
-        }
-        Text(
-            text = if (ui.isNew) "New alarm" else "Edit alarm",
-            style = MaterialTheme.typography.headlineLarge,
-            color = BurtonIvory,
-        )
         Spacer(Modifier.height(20.dp))
         Text("TIME", style = MaterialTheme.typography.labelSmall, color = BurtonMute)
         Text(
@@ -170,24 +167,6 @@ fun AlarmEditorScreen(
             Text(it, color = BurtonDanger, style = MaterialTheme.typography.bodyMedium)
         }
         Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { viewModel.save(onBack) },
-            enabled = !ui.saving,
-            colors = ButtonDefaults.buttonColors(containerColor = BurtonIvory, contentColor = BurtonVoid),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (ui.isNew) "Create alarm" else "Save alarm")
-        }
-        if (!ui.isNew) {
-            TextButton(
-                onClick = { viewModel.delete(onBack) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Delete alarm", color = BurtonDanger)
-            }
-        }
-        Spacer(Modifier.height(32.dp))
     }
     if (showTimePicker) {
         AlertDialog(

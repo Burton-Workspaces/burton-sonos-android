@@ -179,6 +179,21 @@ class AlarmListParserTest {
         assertEquals("3", alarms[0].id)
         assertEquals("08:00:00", alarms[0].startTime)
     }
+
+    @Test
+    fun parsesEnabledTrueAndIdAttribute() {
+        val xml = """
+            <Alarms>
+              <Alarm id="21" StartTime="05:30:00" Recurrence="DAILY" Enabled="true"
+                RoomUUID="RINCON_X" ProgramURI="x-rincon-buzzer:0" Volume="8" IncludeLinkedZones="true"/>
+            </Alarms>
+        """.trimIndent()
+        val alarms = AlarmListParser.parse(xml)
+        assertEquals(1, alarms.size)
+        assertEquals("21", alarms[0].id)
+        assertEquals(true, alarms[0].enabled)
+        assertEquals(true, alarms[0].includeLinkedZones)
+    }
 }
 
 class AlarmRecurrenceTest {

@@ -55,7 +55,6 @@ fun SourcesScreen(
     val household = snapshot.household
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(12.dp))
-        Text("BURTON SONOS", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

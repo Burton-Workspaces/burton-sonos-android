@@ -19,19 +19,22 @@ object AlarmListParser {
         }
         val root = runCatching { Xml.parse(wrapped).rootElement() }.getOrNull() ?: return emptyList()
         return root.descendants("Alarm").mapNotNull { el ->
-            val id = el.getAttribute("ID").ifBlank { return@mapNotNull null }
+            val id = el.attr("ID", "id").ifBlank { return@mapNotNull null }
+            val enabledRaw = el.attr("Enabled", "enabled")
             Alarm(
                 id = id,
-                startTime = el.getAttribute("StartTime").ifBlank { el.getAttribute("StartLocalTime") }.ifBlank { "07:00:00" },
-                duration = el.getAttribute("Duration").ifBlank { Alarm.DEFAULT_DURATION },
-                recurrence = el.getAttribute("Recurrence").ifBlank { "DAILY" },
-                enabled = el.getAttribute("Enabled") == "1",
-                roomUuid = el.getAttribute("RoomUUID"),
-                programUri = el.getAttribute("ProgramURI").ifBlank { Alarm.BUZZER_URI },
-                programMetaData = el.getAttribute("ProgramMetaData"),
-                playMode = el.getAttribute("PlayMode").ifBlank { "NORMAL" },
-                volume = el.getAttribute("Volume").toIntOrNull()?.coerceIn(0, 100) ?: 25,
-                includeLinkedZones = el.getAttribute("IncludeLinkedZones") == "1",
+                startTime = el.attr("StartTime", "StartLocalTime").ifBlank { "07:00:00" },
+                duration = el.attr("Duration").ifBlank { Alarm.DEFAULT_DURATION },
+                recurrence = el.attr("Recurrence").ifBlank { "DAILY" },
+                enabled = enabledRaw == "1" || enabledRaw.equals("true", ignoreCase = true),
+                roomUuid = el.attr("RoomUUID", "RoomUuid"),
+                programUri = el.attr("ProgramURI", "ProgramUri").ifBlank { Alarm.BUZZER_URI },
+                programMetaData = el.attr("ProgramMetaData"),
+                playMode = el.attr("PlayMode").ifBlank { "NORMAL" },
+                volume = el.attr("Volume").toIntOrNull()?.coerceIn(0, 100) ?: 25,
+                includeLinkedZones = el.attr("IncludeLinkedZones").let {
+                    it == "1" || it.equals("true", ignoreCase = true)
+                },
             )
         }.sortedBy { it.startTime }
     }

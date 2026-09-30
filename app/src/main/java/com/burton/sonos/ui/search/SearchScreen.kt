@@ -48,7 +48,6 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(12.dp))
-        Text("BURTON SONOS", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
         Text("Search", style = MaterialTheme.typography.headlineLarge, color = BurtonIvory)
         Text(
             "Artists, albums, tracks, playlists, composers, and genres",

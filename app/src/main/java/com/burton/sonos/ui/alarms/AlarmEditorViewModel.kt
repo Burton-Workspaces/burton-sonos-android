@@ -1,6 +1,5 @@
 package com.burton.sonos.ui.alarms
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.burton.sonos.data.repository.SonosRepository
@@ -24,15 +23,14 @@ data class AlarmEditorState(
 @HiltViewModel
 class AlarmEditorViewModel @Inject constructor(
     private val repository: SonosRepository,
-    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    private val alarmId: String = savedStateHandle["alarmId"] ?: "new"
-    private val isNew = alarmId == "new"
+    private var alarmId: String = "new"
+    private val isNew get() = alarmId == "new"
     val household = repository.state
     private val _ui = MutableStateFlow(
         AlarmEditorState(
-            alarm = existing() ?: Alarm.draft(roomUuid = ""),
-            isNew = isNew,
+            alarm = Alarm.draft(roomUuid = ""),
+            isNew = true,
         ),
     )
     val ui = _ui.asStateFlow()
@@ -47,7 +45,7 @@ class AlarmEditorViewModel @Inject constructor(
                         _ui.update { it.copy(alarm = it.alarm.copy(roomUuid = room)) }
                     }
                 }
-                if (!isNew && current.id.isBlank()) {
+                if (!isNew && current.id != alarmId) {
                     snapshot.alarms.firstOrNull { it.id == alarmId }?.let { found ->
                         _ui.update { it.copy(alarm = found) }
                     }
@@ -56,8 +54,16 @@ class AlarmEditorViewModel @Inject constructor(
         }
     }
 
-    private fun existing(): Alarm? =
-        if (isNew) null else repository.state.value.alarms.firstOrNull { it.id == alarmId }
+    fun open(id: String) {
+        alarmId = id
+        val existing = if (isNew) null else repository.state.value.alarms.firstOrNull { it.id == alarmId }
+        val room = existing?.roomUuid?.ifBlank { null }
+            ?: repository.state.value.household?.visiblePlayers?.firstOrNull()?.uuid.orEmpty()
+        _ui.value = AlarmEditorState(
+            alarm = existing ?: Alarm.draft(roomUuid = room),
+            isNew = isNew,
+        )
+    }
 
     fun setTime(hour: Int, minute: Int) {
         _ui.update { it.copy(alarm = it.alarm.copy(startTime = Alarm.timeString(hour, minute))) }

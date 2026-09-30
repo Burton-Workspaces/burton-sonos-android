@@ -17,28 +17,30 @@ object ZoneGroupStateParser {
         val groups = root.descendants("ZoneGroup").map { groupEl ->
             val members = groupEl.descendants("ZoneGroupMember")
             ZoneGroup(
-                id = groupEl.getAttribute("ID"),
-                coordinatorUuid = groupEl.getAttribute("Coordinator"),
-                memberUuids = members.map { it.getAttribute("UUID") },
+                id = groupEl.attr("ID", "id"),
+                coordinatorUuid = groupEl.attr("Coordinator"),
+                memberUuids = members.map { it.attr("UUID") }.filter { it.isNotBlank() },
             )
         }
         val players = root.descendants("ZoneGroupMember").map { member ->
-            val location = member.getAttribute("Location")
+            val location = member.attr("Location")
+            val moreInfo = member.attr("MoreInfo")
+            val zoneName = member.attr("ZoneName")
             val (ip, port) = hostFromLocation(location)
             Player(
-                uuid = member.getAttribute("UUID"),
-                name = member.getAttribute("ZoneName").ifBlank { "Sonos" },
+                uuid = member.attr("UUID"),
+                name = zoneName.ifBlank { "Sonos" },
                 ip = ip,
                 port = port,
                 location = location,
-                model = member.getAttribute("MoreInfo").substringAfter("mdl=", "").substringBefore(";"),
-                softwareVersion = member.getAttribute("SoftwareVersion"),
-                invisible = member.getAttribute("Invisible") == "1",
-                hasLineIn = member.getAttribute("LineOutLevel") != "" ||
-                    member.getAttribute("MoreInfo").contains("linn=1") ||
-                    looksLikeLineInModel(member.getAttribute("ZoneName"), member.getAttribute("MoreInfo")),
-                hasHdmi = member.getAttribute("HTSatChanMapSet").isNotBlank() ||
-                    member.getAttribute("MoreInfo").contains("ht=1"),
+                model = moreInfo.substringAfter("mdl=", "").substringBefore(";"),
+                softwareVersion = member.attr("SoftwareVersion"),
+                invisible = member.attr("Invisible").let { it == "1" || it.equals("true", ignoreCase = true) },
+                hasLineIn = member.attr("LineOutLevel").isNotBlank() ||
+                    moreInfo.contains("linn=1") ||
+                    looksLikeLineInModel(zoneName, moreInfo),
+                hasHdmi = member.attr("HTSatChanMapSet").isNotBlank() ||
+                    moreInfo.contains("ht=1"),
             )
         }.distinctBy { it.uuid }
         return groups to players

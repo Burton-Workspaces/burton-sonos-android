@@ -28,7 +28,7 @@ class NamedGroupsViewModel @Inject constructor(
     val snapshot = repository.state
     val groups = repository.namedGroups.stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
+        SharingStarted.Eagerly,
         emptyList(),
     )
     private val _ui = MutableStateFlow(NamedGroupsUi())

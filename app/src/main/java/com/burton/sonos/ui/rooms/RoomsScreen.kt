@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +37,7 @@ import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.ui.components.AlbumArt
 import com.burton.sonos.ui.components.GroupVolumeSlider
 import com.burton.sonos.ui.components.RoomsSkeleton
+import com.burton.sonos.ui.settings.SettingsModal
 import com.burton.sonos.ui.theme.BurtonCharcoal
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
@@ -48,17 +52,13 @@ fun RoomsScreen(
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
     val household = snapshot.household
+    var showSettings by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp),
     ) {
         Spacer(Modifier.height(12.dp))
-        Text(
-            text = "BURTON SONOS",
-            style = MaterialTheme.typography.labelSmall,
-            color = BurtonSand,
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -69,8 +69,8 @@ fun RoomsScreen(
                 color = BurtonIvory,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = viewModel::refresh) {
-                Icon(Icons.Rounded.Refresh, contentDescription = "Scan again", tint = BurtonIvory)
+            IconButton(onClick = { showSettings = true }) {
+                Icon(Icons.Rounded.Settings, contentDescription = "Settings", tint = BurtonIvory)
             }
         }
         Text(
@@ -119,6 +119,9 @@ fun RoomsScreen(
                 }
             }
         }
+    }
+    if (showSettings) {
+        SettingsModal(onDismiss = { showSettings = false })
     }
 }
 

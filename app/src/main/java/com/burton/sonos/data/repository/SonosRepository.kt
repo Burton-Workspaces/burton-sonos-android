@@ -211,7 +211,7 @@ class SonosRepository @Inject constructor(
                         selectedPlayback?.let { mapOf(id to it) }
                     } ?: emptyMap()) + rest,
                 ),
-                alarms = alarms,
+                alarms = alarms ?: snapshot.alarms,
             )
         }
         importLiveNamedGroups(household)
@@ -461,25 +461,28 @@ class SonosRepository @Inject constructor(
             ?: household.players.firstOrNull()
     }
 
-    private suspend fun loadAlarms(household: Household): List<Alarm> {
+    private suspend fun loadAlarms(household: Household): List<Alarm>? {
         val tried = LinkedHashSet<String>()
         val candidates = buildList {
             household.groups.mapNotNull { household.coordinator(it) }.forEach { add(it) }
             alarmSpeaker(household)?.let { add(it) }
             household.visiblePlayers.forEach { add(it) }
+            household.players.forEach { add(it) }
         }
+        var emptySuccess = false
         for (player in candidates) {
             if (!tried.add(player.uuid)) continue
-            val loaded = runCatching { control.listAlarms(player) }
-            if (loaded.isSuccess) return loaded.getOrDefault(emptyList())
+            val loaded = runCatching { control.listAlarms(player) }.getOrNull() ?: continue
+            if (loaded.isNotEmpty()) return loaded
+            emptySuccess = true
         }
-        return emptyList()
+        return if (emptySuccess) emptyList() else null
     }
 
     private suspend fun importLiveNamedGroups(household: Household) {
         val live = household.groups.mapNotNull { group ->
             val members = household.visibleMembers(group)
-            if (members.size < 2) return@mapNotNull null
+            if (members.isEmpty()) return@mapNotNull null
             NamedGroup(
                 id = "live-" + members.map { it.uuid }.sorted().joinToString("-"),
                 name = household.groupName(group),

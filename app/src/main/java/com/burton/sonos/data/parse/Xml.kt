@@ -102,6 +102,22 @@ internal fun Element.matchesName(localName: String): Boolean {
     return local.equals(localName, ignoreCase = true)
 }
 
+internal fun Element.attr(vararg names: String): String {
+    names.forEach { wanted ->
+        val direct = getAttribute(wanted)
+        if (direct.isNotBlank()) return direct
+    }
+    val attrs = attributes ?: return ""
+    for (index in 0 until attrs.length) {
+        val attr = attrs.item(index) ?: continue
+        val local = attr.localName ?: attr.nodeName.substringAfter(':')
+        if (names.any { it.equals(local, ignoreCase = true) }) {
+            return attr.nodeValue.orEmpty()
+        }
+    }
+    return ""
+}
+
 internal fun Document.rootElement(): Element = documentElement
 
 private fun collect(node: Node, localName: String, out: MutableList<Element>) {

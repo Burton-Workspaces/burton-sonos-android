@@ -12,21 +12,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,21 +40,33 @@ import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
-import com.burton.sonos.ui.theme.BurtonVoid
 
 @Composable
 fun AlarmsScreen(
-    onEdit: (String) -> Unit,
-    onCreate: () -> Unit,
     viewModel: AlarmsViewModel = hiltViewModel(),
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
     val household = snapshot.household
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    var editorId by remember { mutableStateOf<String?>(null) }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(12.dp))
-        Text("BURTON SONOS", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
-        Text("Alarms", style = MaterialTheme.typography.headlineLarge, color = BurtonIvory)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                "Alarms",
+                style = MaterialTheme.typography.headlineLarge,
+                color = BurtonIvory,
+                modifier = Modifier.weight(1f),
+            )
+            if (household != null) {
+                IconButton(onClick = { editorId = "new" }) {
+                    Icon(Icons.Rounded.Add, contentDescription = "Add alarm", tint = BurtonIvory)
+                }
+            }
+        }
         Text(
             text = when {
                 household == null -> "Waiting for speakers"
@@ -75,28 +88,13 @@ fun AlarmsScreen(
                     roomName = household?.player(alarm.roomUuid)?.name ?: "Room",
                     is24Hour = is24Hour,
                     onToggle = { viewModel.setEnabled(alarm, it) },
-                    onClick = { onEdit(alarm.id) },
+                    onClick = { editorId = alarm.id },
                 )
             }
-            if (household != null) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = onCreate,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BurtonIvory,
-                            contentColor = BurtonVoid,
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Add alarm")
-                    }
-                }
-            }
         }
+    }
+    editorId?.let { id ->
+        AlarmEditorScreen(alarmId = id, onBack = { editorId = null })
     }
 }
 
