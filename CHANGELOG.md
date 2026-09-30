@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.5.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.4.1...v1.5.0) (2026-09-30)
+
+
+### Features
+
+* move named groups and alarms into settings ([bf88e3a](https://github.com/Burton-Workspaces/burton-sonos-android/commit/bf88e3a4ea001cbe41decbccdf9cf1e2a3fda246))
+
+
+### Bug Fixes
+
+* require pipx fdroidserver for AGP 8.7 APKs ([e28e58e](https://github.com/Burton-Workspaces/burton-sonos-android/commit/e28e58ea141104bb7f0aa074be08667ae3d11698))
+
 ## [1.4.1](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.4.0...v1.4.1) (2026-09-30)
 
 
