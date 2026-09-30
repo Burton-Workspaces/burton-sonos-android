@@ -191,6 +191,35 @@ class SonosControl @Inject constructor(
         return DidlLiteParser.parseItems(result["Result"].orEmpty(), player.baseUrl)
     }
 
+    suspend fun refreshShareIndex(player: Player) {
+        val option = runCatching {
+            soap.action(
+                baseUrl = player.baseUrl,
+                controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+                serviceType = SonosServices.CONTENT_DIRECTORY,
+                action = "GetAlbumArtistDisplayOption",
+            )["AlbumArtistDisplayOption"]
+        }.getOrNull().orEmpty()
+        soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+            serviceType = SonosServices.CONTENT_DIRECTORY,
+            action = "RefreshShareIndex",
+            args = mapOf("AlbumArtistDisplayOption" to option),
+        )
+    }
+
+    suspend fun shareIndexInProgress(player: Player): Boolean {
+        val result = soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+            serviceType = SonosServices.CONTENT_DIRECTORY,
+            action = "GetShareIndexInProgress",
+        )
+        val raw = result["IsIndexing"] ?: result["ShareIndexInProgress"].orEmpty()
+        return raw == "1" || raw.equals("true", ignoreCase = true)
+    }
+
     suspend fun playUri(coordinator: Player, uri: String, metadata: String) {
         enqueueAndPlay(coordinator, uri, metadata, PlayAction.PLAY_NOW)
     }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,8 +22,11 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,15 +49,49 @@ fun SourcesScreen(
     viewModel: SourcesViewModel = hiltViewModel(),
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
+    val indexing by viewModel.indexing.collectAsStateWithLifecycle()
+    val notice by viewModel.notice.collectAsStateWithLifecycle()
     val sources = viewModel.sources()
+    val household = snapshot.household
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(12.dp))
         Text("BURTON SONOS", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
-        Text("Sources", style = MaterialTheme.typography.headlineLarge, color = BurtonIvory)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Sources",
+                style = MaterialTheme.typography.headlineLarge,
+                color = BurtonIvory,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(
+                onClick = viewModel::scanForNewContent,
+                enabled = household != null && !indexing,
+            ) {
+                if (indexing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = BurtonSand,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.Sync,
+                        contentDescription = "Scan for new content",
+                        tint = if (household != null) BurtonIvory else BurtonMute,
+                    )
+                }
+            }
+        }
         Text(
-            text = snapshot.household?.let { house ->
-                snapshot.selectedGroup?.let { house.groupName(it) } ?: "This system"
-            } ?: "Waiting for speakers",
+            text = when {
+                indexing -> "Scanning music library for new content"
+                notice != null -> notice.orEmpty()
+                household == null -> "Waiting for speakers"
+                else -> snapshot.selectedGroup?.let { household.groupName(it) } ?: "This system"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = BurtonMute,
         )

@@ -40,6 +40,8 @@ Browse objects already indexed on the household:
 
 Line-in and TV start playback immediately on the selected group. Everything else opens a browse list.
 
+The sync icon in the top right starts a household **Scan for new content** (`RefreshShareIndex`). It disables while the library index is running (`GetShareIndexInProgress`) and turns back on when that finishes.
+
 ### Search
 
 Searches the local ContentDirectory (`A:ALBUMARTIST`, `A:ALBUM`, `A:TRACKS`, `A:PLAYLISTS`, `A:COMPOSER`, `A:GENRE`). Tap a playable row to play now on the selected group. The overflow sheet can:

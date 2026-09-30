@@ -29,6 +29,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -296,6 +297,37 @@ class SonosRepository @Inject constructor(
         return control.browse(player, objectId)
     }
 
+    suspend fun refreshShareIndex() {
+        val player = contentPlayer() ?: error("No speaker to scan from.")
+        val already = runCatching { control.shareIndexInProgress(player) }.getOrNull()
+        if (already != true) {
+            control.refreshShareIndex(player)
+        }
+        if (already == null) {
+            delay(SHARE_INDEX_POLL_MS * 2)
+            return
+        }
+        withTimeout(SHARE_INDEX_TIMEOUT_MS) {
+            var sawIndexing = already == true
+            var idleTicks = 0
+            while (true) {
+                delay(SHARE_INDEX_POLL_MS)
+                val indexing = control.shareIndexInProgress(player)
+                when {
+                    indexing -> {
+                        sawIndexing = true
+                        idleTicks = 0
+                    }
+                    sawIndexing -> return@withTimeout
+                    else -> {
+                        idleTicks += 1
+                        if (idleTicks >= SHARE_INDEX_IDLE_TICKS) return@withTimeout
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun searchLibrary(query: String): List<LibrarySearchSection> {
         val term = query.trim()
         if (term.isEmpty()) return emptyList()
@@ -486,5 +518,11 @@ class SonosRepository @Inject constructor(
         val player = alarmSpeaker() ?: return
         control.destroyAlarm(player, alarmId)
         refresh(scan = false)
+    }
+
+    private companion object {
+        const val SHARE_INDEX_POLL_MS = 1_000L
+        const val SHARE_INDEX_IDLE_TICKS = 4
+        const val SHARE_INDEX_TIMEOUT_MS = 15 * 60 * 1_000L
     }
 }
