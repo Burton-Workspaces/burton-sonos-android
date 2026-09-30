@@ -1,5 +1,7 @@
 # Releases
 
+How versions are cut once automation is already configured. **First-time GitHub Actions, permissions, and signing secrets:** [build-automation.md](build-automation.md).
+
 Versioning is **SemVer**. The Gradle `versionName` and `versionCode` both come from [`version.txt`](../version.txt):
 
 ```
@@ -46,22 +48,18 @@ SDK setup lives in [`.github/actions/setup-android-ci`](../.github/actions/setup
 
 ## Signing
 
-Local:
+Local and CI signing, including how `KEYSTORE_BASE64` maps to your JKS, is documented in [build-automation.md](build-automation.md).
 
-1. Copy `keystore.properties.example` → `keystore.properties`
-2. Create a JKS (alias `burton` by convention)
-3. `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
+GitHub repository secrets used by [`.github/workflows/release-assets.yml`](../.github/workflows/release-assets.yml):
 
-GitHub repository secrets:
-
-| Secret | Role |
+| Secret | Local source |
 | --- | --- |
-| `KEYSTORE_BASE64` | Base64 of the JKS (required) |
-| `KEYSTORE_PASSWORD` | Store password (required) |
-| `KEY_ALIAS` | Defaults to `burton` |
-| `KEY_PASSWORD` | Defaults to the store password |
+| `KEYSTORE_BASE64` | Base64 of the JKS named in `storeFile` |
+| `KEYSTORE_PASSWORD` | `storePassword` |
+| `KEY_ALIAS` | `keyAlias` (optional; default `burton`) |
+| `KEY_PASSWORD` | `keyPassword` (optional; default store password) |
 
-CI writes `release.jks` and `keystore.properties` on the runner. Never commit those files or the keystore.
+Never commit `keystore.properties` or the keystore.
 
 ## Manual APK retry
 

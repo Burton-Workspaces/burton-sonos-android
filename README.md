@@ -29,7 +29,8 @@ First launch hydrates the last household from local cache and returns as soon as
 | [Using the app](docs/using.md) | Screens, permissions, and what lives on-device vs on the speakers |
 | [Architecture](docs/architecture.md) | Packages, discovery, SOAP, caching, polling |
 | [Development](docs/development.md) | Build, run, test, project layout |
-| [Releases](docs/releases.md) | SemVer, signing, CI, GitHub Releases |
+| [Build automation](docs/build-automation.md) | GitHub Actions, workflow permissions, signing secrets |
+| [Releases](docs/releases.md) | SemVer, cutting a version, GitHub Releases |
 | [Contributing](CONTRIBUTING.md) | Conventional Commits (required) |
 
 ## Quick start (debug)

@@ -17,7 +17,7 @@ Point Gradle at the SDK with `local.properties` (`sdk.dir=…`). That file is gi
 ./gradlew testDebugUnitTest
 ```
 
-Release assemble is blocked unless `keystore.properties` exists and `storeFile` points at a real keystore. Copy [`keystore.properties.example`](../keystore.properties.example) and keep `keystore.properties`, `*.jks`, and `*.keystore` out of git (see `.gitignore`).
+Release assemble is blocked unless `keystore.properties` exists and `storeFile` points at a real keystore. Copy [`keystore.properties.example`](../keystore.properties.example) and keep `keystore.properties`, `*.jks`, and `*.keystore` out of git (see `.gitignore`). GitHub Actions signing is [build automation](build-automation.md).
 
 Debug application id is `com.burton.sonos.debug` so it can sit next to a signed install.
 

@@ -44,4 +44,4 @@ Pushes to `master` and pull requests run **Conventional commits**:
 
 Require that check in GitHub branch protection if you want GitHub to block the merge button.
 
-Do not hand-edit `version.txt` or `CHANGELOG.md` on feature work; see [docs/releases.md](docs/releases.md).
+Do not hand-edit `version.txt` or `CHANGELOG.md` on feature work; see [docs/releases.md](docs/releases.md). First-time Actions setup: [docs/build-automation.md](docs/build-automation.md).
