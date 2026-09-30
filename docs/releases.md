@@ -21,6 +21,16 @@ Merges to `master` **must** use [Conventional Commits](https://www.conventionalc
 
 The release PR updates `version.txt`, `CHANGELOG.md`, and `.release-please-manifest.json`. Merging it tags `vX.Y.Z` and creates the GitHub Release.
 
+The **Release** workflow uses `GITHUB_TOKEN`. The repository must allow Actions to open PRs:
+
+**Settings → Actions → General → Workflow permissions**
+- Read and write permissions
+- **Allow GitHub Actions to create and approve pull requests**
+
+Without that checkbox, release-please can push `release-please--branches--master` but the job fails with *GitHub Actions is not permitted to create or approve pull requests*.
+
+Label updates after tagging are skipped (`skip-labeling: true`) so a GitHub API blip cannot fail the job after the GitHub Release already exists. The APK pack still runs from that workflow and from tag pushes (`release-assets.yml` uploads with `--clobber`).
+
 ## CI
 
 | Workflow | When | What |
@@ -30,9 +40,7 @@ The release PR updates `version.txt`, `CHANGELOG.md`, and `.release-please-manif
 | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | push to `master` | release-please; if a release was created, pack APK |
 | [`.github/workflows/release-assets.yml`](../.github/workflows/release-assets.yml) | tag `v*.*.*`, workflow_call, or `workflow_dispatch` | test, signed `assembleRelease`, upload `burton-sonos-<version>.apk` |
 
-Pack **skips** when the tag push commit message is the release-please bump (`chore(release)` / `: release `), so the APK is built once from the release-please job instead of twice.
-
-The tag must match `version.txt` (without the `v`). Checkout uses the tag ref.
+The tag must match `version.txt` (without the `v`). Checkout uses the tag ref. Duplicate uploads use `--clobber`.
 
 SDK setup lives in [`.github/actions/setup-android-ci`](../.github/actions/setup-android-ci/action.yml): Temurin 17, Android SDK `platform-tools`, `local.properties` `sdk.dir`.
 

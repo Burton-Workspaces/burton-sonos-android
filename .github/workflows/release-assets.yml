@@ -1,8 +1,10 @@
 # Builds a signed APK and attaches it to a GitHub Release.
 # Triggered by:
 #   - release.yml after release-please tags a version
-#   - pushing a vX.Y.Z tag (skipped when the tagged commit is a release-please bump)
+#   - pushing a vX.Y.Z tag
 #   - workflow_dispatch (retries)
+#
+# Upload uses --clobber so a tag push and the release.yml pack job can both run.
 name: Release assets
 
 on:
@@ -28,7 +30,6 @@ permissions:
 jobs:
   github-release:
     name: Build and upload APK
-    if: "${{ github.event_name != 'push' || (!contains(github.event.head_commit.message, ': release ') && !contains(github.event.head_commit.message, 'chore(release)')) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: write
