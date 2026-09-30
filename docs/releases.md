@@ -1,6 +1,6 @@
 # Releases
 
-How versions are cut once automation is already configured. **First-time GitHub Actions, permissions, and signing secrets:** [build-automation.md](build-automation.md).
+How versions are cut once automation is already configured. **Local signed build + GitHub Release + F-Droid Pages:** [Local release build and publish](#local-release-build-and-publish) below. **First-time GitHub Actions, permissions, and signing secrets:** [build-automation.md](build-automation.md).
 
 Versioning is **SemVer**. The Gradle `versionName` and `versionCode` both come from [`version.txt`](../version.txt):
 
@@ -61,12 +61,80 @@ GitHub repository secrets used by [`.github/workflows/release-assets.yml`](../.g
 
 Never commit `keystore.properties` or the keystore.
 
-## Manual APK retry
+## Local release build and publish
 
-GitHub Actions → **Release assets** → Run workflow → tag `vX.Y.Z` (must already exist and match `version.txt`).
+Do this from a `burton-sonos-android` checkout. The version argument **must match** [`version.txt`](../version.txt) (today that is `1.3.0`). Both scripts accept `1.3.0` or `v1.3.0`.
 
-Local equivalent: `./scripts/upload-release-apk.sh 1.3.0` (version must match `version.txt`).
+Do **not** hand-edit `version.txt` to invent a new number. After a `feat:` / `fix:` on `master`, merge the release-please PR so `version.txt` and tag `vX.Y.Z` move together. The **Release-please** job only runs when `github.repository` is `Burton-Workspaces/burton-sonos-android` (see [`.github/workflows/release.yml`](../.github/workflows/release.yml)), so forks do not open version PRs.
 
-## Droidify / F-Droid
+### One-time setup
 
-GitHub Releases are not an F-Droid repository. To let Droidify or the F-Droid client install and update the app, host a simple binary repo and publish its URL plus repo **Fingerprint**. See [fdroid.md](fdroid.md) and `./scripts/publish-fdroid-pages.sh`.
+Skip any step you have already done.
+
+**1. App signing** (same JKS CI uses; see [build-automation.md](build-automation.md))
+
+```bash
+cp keystore.properties.example keystore.properties
+```
+
+Point `storeFile` at your JKS and fill `storePassword`, `keyAlias`, and `keyPassword`.
+
+**2. GitHub CLI** must be able to write this repo’s Releases:
+
+```bash
+gh auth status
+```
+
+**3. F-Droid index key** (private machine; not the Pages repo)
+
+```bash
+sudo apt install fdroidserver    # or: pipx install fdroidserver
+mkdir -p ~/fdroid && cd ~/fdroid
+fdroid init
+chmod 0600 config.yml
+```
+
+In `~/fdroid/config.yml` set `repo_url` to `https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo` and set `repo_name` (for example `Burton Sonos`). Details: [fdroid.md](fdroid.md).
+
+**4. Pages checkout** — clone [Burton-Workspaces/burton-sonos-fdroid](https://github.com/Burton-Workspaces/burton-sonos-fdroid) **next to** this app (`../burton-sonos-fdroid`). `./scripts/publish-fdroid-pages.sh` uses that path by default.
+
+### Each release
+
+**5. Pack the tree that matches `version.txt`.** After a real bump, check out that tag (or build `master` once the release-please PR is merged). Gradle reads `versionName` from `version.txt` in the tree you assemble.
+
+**6. Signed build and attach to this GitHub repo**
+
+```bash
+cd /path/to/burton-sonos-android
+./scripts/upload-release-apk.sh 1.3.0
+```
+
+That runs `assembleRelease`, copies `burton-sonos-1.3.0.apk` into the repo root (gitignored), and uploads it to GitHub Release `v1.3.0` (`--clobber` if the asset already exists).
+
+**7. Publish the same APK to the F-Droid Pages repo**
+
+```bash
+export FDROID_ROOT=~/fdroid
+./scripts/publish-fdroid-pages.sh 1.3.0
+```
+
+That reuses `burton-sonos-1.3.0.apk` if it is still in the app root, runs `fdroid update`, copies only `repo/` into `../burton-sonos-fdroid/fdroid/repo/`, writes `FINGERPRINT`, and pushes.
+
+**8. First F-Droid publish only:** edit `~/fdroid/metadata/com.burton.sonos.yml` (name, license, summary), then run step 7 again so Droidify is not a stub catalog.
+
+**9. Confirm**
+
+- GitHub Release: `https://github.com/Burton-Workspaces/burton-sonos-android/releases/tag/v1.3.0`
+- F-Droid index: `https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo`
+- Fingerprint: `../burton-sonos-fdroid/FINGERPRINT` (also printed by the publish script)
+
+Droidify → **Repositories** → **+**
+
+- Address: `https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo`
+- Fingerprint: the 64-character hex from `FINGERPRINT`
+
+Replace `1.3.0` with whatever is in `version.txt` on later versions.
+
+## Manual APK retry (CI)
+
+GitHub Actions → **Release assets** → Run workflow → tag `vX.Y.Z` (must already exist and match `version.txt`). That only attaches the APK to the GitHub Release; it does not update the F-Droid Pages repo. For Pages, still run step 7.

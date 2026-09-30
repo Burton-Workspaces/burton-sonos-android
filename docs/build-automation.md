@@ -22,7 +22,7 @@ Day-to-day versioning is in [releases.md](releases.md). Commit message rules are
 | [`release-please-config.json`](../release-please-config.json) | SemVer, `CHANGELOG.md`, tags `vX.Y.Z` |
 | [`scripts/install-git-hooks.sh`](../scripts/install-git-hooks.sh) | Local `commit-msg` hook |
 
-Release-please only runs when `github.repository` is `rconnelly/burton-sonos-android`. Forks still get CI tests.
+Release-please only runs when `github.repository` is `Burton-Workspaces/burton-sonos-android`. Forks still get CI tests.
 
 ## 1. Enable Actions
 
@@ -125,4 +125,4 @@ CI still rejects non-conventional subjects on `master` and on pull requests.
 | Tag exists, GitHub Release has no APK | Pack failed (secrets) or was skipped; run **Release assets** with that tag, or upload a locally signed APK |
 | *Tag does not match version.txt* | Pack checked out a tag whose `version.txt` is not that SemVer |
 | Release-please never opens a PR | Commits since the last tag are not `feat:` / `fix:` / `perf:` |
-| Fork has no release-please job | Hard-coded to `rconnelly/burton-sonos-android` |
+| Fork has no release-please job | Hard-coded to `Burton-Workspaces/burton-sonos-android` |

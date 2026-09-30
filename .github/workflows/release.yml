@@ -12,9 +12,8 @@
 #     googleapis/release-please-action@v5 reads release-please-config.json and
 #     .release-please-manifest.json. skip-labeling avoids a GitHub API blip
 #     failing the job after the Release already exists.
-#     Only runs when github.repository is rconnelly/burton-sonos-android so
-#     forks do not open release PRs. If that name does not match this repo,
-#     this job is skipped and no version PR is opened.
+#     Only runs when github.repository is Burton-Workspaces/burton-sonos-android
+#     so forks do not open release PRs.
 #   Pack release APK
 #     Runs only when release-please actually created a release (outputs
 #     release_created + tag_name). Reuses release-assets.yml with that tag.
@@ -30,7 +29,7 @@ permissions:
 jobs:
   release-please:
     name: Release-please
-    if: github.repository == 'rconnelly/burton-sonos-android'
+    if: github.repository == 'Burton-Workspaces/burton-sonos-android'
     runs-on: ubuntu-latest
     permissions:
       contents: write

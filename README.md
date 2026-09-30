@@ -30,7 +30,7 @@ First launch hydrates the last household from local cache and returns as soon as
 | [Architecture](docs/architecture.md) | Packages, discovery, SOAP, caching, polling |
 | [Development](docs/development.md) | Build, run, test, project layout |
 | [Build automation](docs/build-automation.md) | GitHub Actions, workflow permissions, signing secrets |
-| [Releases](docs/releases.md) | SemVer, cutting a version, GitHub Releases |
+| [Releases](docs/releases.md) | SemVer, local build + publish walkthrough, GitHub Releases |
 | [F-Droid / Droidify](docs/fdroid.md) | Self-hosted repo, Fingerprint, Pages publish script |
 | [Contributing](CONTRIBUTING.md) | Conventional Commits (required) |
 

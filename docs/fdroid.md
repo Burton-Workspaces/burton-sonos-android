@@ -67,7 +67,7 @@ What it does, in order:
 6. Commits `Publish Burton Sonos <version>` in the Pages repo and pushes unless `FDROID_PAGES_PUSH=0`.
 7. Prints the repo SHA-256 **Fingerprint** and the `?fingerprint=` add-repo URL when it can.
 
-Typical release sequence:
+Typical release sequence (full walkthrough: [releases.md](releases.md)):
 
 ```bash
 ./scripts/upload-release-apk.sh 1.3.0
@@ -147,6 +147,7 @@ Toggle the new repo on if the catalog does not appear immediately.
 
 ## Related
 
+- Step-by-step local build and publish: [releases.md](releases.md)
 - Signed APKs and tags: [releases.md](releases.md)
 - Local assemble + GitHub Release upload: `./scripts/upload-release-apk.sh <version>`
 - F-Droid index + GitHub Pages: `./scripts/publish-fdroid-pages.sh <version>`
