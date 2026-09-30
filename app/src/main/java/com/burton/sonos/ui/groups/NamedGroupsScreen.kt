@@ -51,14 +51,20 @@ fun NamedGroupsScreen(
     val liveMemberSets = household?.groups.orEmpty().map { group ->
         household?.visibleMembers(group)?.map { it.uuid }?.toSet().orEmpty()
     }.toSet()
-    val saved = groups.filterNot { named ->
+    val areaMemberSets = snapshot.areas.map { it.memberUuids.toSet() }.toSet()
+    val local = groups.filterNot { named ->
         named.id.startsWith("live-") &&
             (named.memberUuids.size < 2 || named.memberUuids.toSet() in liveMemberSets)
-    }
+    }.filterNot { named -> named.memberUuids.toSet() in areaMemberSets }
+    val saved = snapshot.areas + local
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(Modifier.height(8.dp))
         Text(
-            "Named sets you can form later.",
+            text = when {
+                household == null -> "Waiting for speakers"
+                saved.isEmpty() -> "Named sets you can form later"
+                else -> "${saved.size} on this household"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = BurtonMute,
         )

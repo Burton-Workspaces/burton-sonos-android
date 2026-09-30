@@ -46,7 +46,11 @@ fun SettingsModal(
 ) {
     var page by remember { mutableStateOf(SettingsPage.Root) }
     val snapshot by alarmsViewModel.state.collectAsStateWithLifecycle()
+    val namedGroups by groupsViewModel.groups.collectAsStateWithLifecycle()
     val household = snapshot.household
+    val groupCount = snapshot.areas.size + namedGroups.count { named ->
+        !named.id.startsWith("live-") && named.id !in snapshot.areas.map { it.id }
+    }
     FullScreenModal(
         onDismiss = { if (page == SettingsPage.Root) onDismiss() else page = SettingsPage.Root },
         title = when (page) {
@@ -72,7 +76,11 @@ fun SettingsModal(
                 Spacer(Modifier.height(20.dp))
                 SettingsRow(
                     title = "Groups",
-                    subtitle = "Named sets you can form later",
+                    subtitle = when {
+                        household == null -> "Waiting for speakers"
+                        groupCount == 0 -> "Named sets you can form later"
+                        else -> "$groupCount on this household"
+                    },
                     onClick = { page = SettingsPage.Groups },
                 )
                 Spacer(Modifier.height(10.dp))

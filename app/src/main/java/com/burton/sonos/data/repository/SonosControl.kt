@@ -4,11 +4,13 @@ import com.burton.sonos.data.parse.AlarmListParser
 import com.burton.sonos.data.parse.DeviceDescriptionParser
 import com.burton.sonos.data.parse.DidlLiteParser
 import com.burton.sonos.data.parse.ZoneGroupStateParser
+import com.burton.sonos.data.soap.MuseClient
 import com.burton.sonos.data.soap.SoapClient
 import com.burton.sonos.data.soap.SonosServices
 import com.burton.sonos.domain.Alarm
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.Household
+import com.burton.sonos.domain.NamedGroup
 import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.domain.PlayAction
 import com.burton.sonos.domain.Player
@@ -22,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class SonosControl @Inject constructor(
     private val soap: SoapClient,
+    private val muse: MuseClient,
 ) {
     suspend fun householdFrom(ip: String): Household {
         val description = soap.get("http://$ip:1400/xml/device_description.xml")
@@ -397,6 +400,20 @@ class SonosControl @Inject constructor(
             action = "BecomeCoordinatorOfStandaloneGroup",
             args = mapOf("InstanceID" to "0"),
         )
+    }
+
+    suspend fun museHouseholdId(player: Player): String =
+        soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.ZONE_GROUP_TOPOLOGY_PATH,
+            serviceType = SonosServices.ZONE_GROUP_TOPOLOGY,
+            action = "GetZoneGroupAttributes",
+        )["CurrentMuseHouseholdId"].orEmpty()
+
+    suspend fun listAreas(player: Player): List<NamedGroup> {
+        val museId = museHouseholdId(player)
+        if (museId.isBlank()) return emptyList()
+        return muse.listAreas(player.ip, museId)
     }
 
     suspend fun listAlarms(player: Player): List<Alarm> {

@@ -37,6 +37,7 @@ data class SonosSnapshot(
     val household: Household? = null,
     val nowPlaying: Map<String, NowPlaying> = emptyMap(),
     val alarms: List<Alarm> = emptyList(),
+    val areas: List<NamedGroup> = emptyList(),
     val selectedGroupId: String? = null,
     val scanning: Boolean = true,
     val error: String? = null,
@@ -194,7 +195,7 @@ class SonosRepository @Inject constructor(
         household.players.firstOrNull()?.ip?.let { prefs.setLastSpeakerIp(it) }
 
         val remaining = household.groups.filterNot { it.id == selected?.id }
-        val (rest, alarms) = coroutineScope {
+        val (rest, alarms, areas) = coroutineScope {
             val playbackDeferred = async {
                 remaining.associate { group ->
                     val coordinator = household.coordinator(group) ?: return@associate group.id to null
@@ -202,7 +203,8 @@ class SonosRepository @Inject constructor(
                 }.filterValues { it != null }.mapValues { it.value as NowPlaying }
             }
             val alarmsDeferred = async { loadAlarms(household) }
-            playbackDeferred.await() to alarmsDeferred.await()
+            val areasDeferred = async { loadAreas(household) }
+            Triple(playbackDeferred.await(), alarmsDeferred.await(), areasDeferred.await())
         }
         _state.update { snapshot ->
             snapshot.copy(
@@ -212,6 +214,7 @@ class SonosRepository @Inject constructor(
                     } ?: emptyMap()) + rest,
                 ),
                 alarms = alarms ?: snapshot.alarms,
+                areas = areas ?: snapshot.areas,
             )
         }
         importLiveNamedGroups(household)
@@ -473,6 +476,23 @@ class SonosRepository @Inject constructor(
         for (player in candidates) {
             if (!tried.add(player.uuid)) continue
             val loaded = runCatching { control.listAlarms(player) }.getOrNull() ?: continue
+            if (loaded.isNotEmpty()) return loaded
+            emptySuccess = true
+        }
+        return if (emptySuccess) emptyList() else null
+    }
+
+    private suspend fun loadAreas(household: Household): List<NamedGroup>? {
+        val tried = LinkedHashSet<String>()
+        val candidates = buildList {
+            household.groups.mapNotNull { household.coordinator(it) }.forEach { add(it) }
+            household.visiblePlayers.forEach { add(it) }
+            household.players.forEach { add(it) }
+        }
+        var emptySuccess = false
+        for (player in candidates) {
+            if (!tried.add(player.uuid)) continue
+            val loaded = runCatching { control.listAreas(player) }.getOrNull() ?: continue
             if (loaded.isNotEmpty()) return loaded
             emptySuccess = true
         }

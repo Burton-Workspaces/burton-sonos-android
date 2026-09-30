@@ -302,6 +302,37 @@ class HouseholdCacheTest {
     }
 }
 
+class AreaListParserTest {
+    @Test
+    fun parsesHouseholdAreasAndSkipsReadOnly() {
+        val json = """
+            {
+              "_objectType": "areas",
+              "areas": [
+                {
+                  "_objectType": "area",
+                  "id": "bc041a70-a5e5-4136-ad48-c30bb4237d7d",
+                  "name": "Downstairs",
+                  "playerIds": ["RINCON_KITCHEN", "RINCON_FAMILY", "RINCON_OTHER"]
+                },
+                {
+                  "_objectType": "area",
+                  "id": "7055133f-81e7-45e6-ba70-8803966c7185",
+                  "name": "Everywhere",
+                  "isReadOnly": true,
+                  "playerIds": ["RINCON_KITCHEN", "RINCON_FAMILY", "RINCON_BEDROOM"]
+                }
+              ]
+            }
+        """.trimIndent()
+        val areas = AreaListParser.parse(json)
+        assertEquals(1, areas.size)
+        assertEquals("area-bc041a70-a5e5-4136-ad48-c30bb4237d7d", areas[0].id)
+        assertEquals("Downstairs", areas[0].name)
+        assertEquals(listOf("RINCON_KITCHEN", "RINCON_FAMILY", "RINCON_OTHER"), areas[0].memberUuids)
+    }
+}
+
 class NamedGroupCacheTest {
     @Test
     fun roundTripsNamedGroups() {
