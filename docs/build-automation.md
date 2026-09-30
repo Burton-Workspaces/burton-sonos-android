@@ -72,8 +72,6 @@ That writes `app/build/outputs/apk/release/app-release.apk`. Never commit the JK
 
 ## 3. GitHub secrets (CI signing)
 
-**Settings → Secrets and variables → Actions → New repository secret**
-
 There is no env var named `KEYSTORE_BASE64` on your machine. CI reconstructs `release.jks` and `keystore.properties` from secrets:
 
 | GitHub secret | Local source |
@@ -83,15 +81,47 @@ There is no env var named `KEYSTORE_BASE64` on your machine. CI reconstructs `re
 | `KEY_ALIAS` | `keyAlias` (omit to use `burton`) |
 | `KEY_PASSWORD` | `keyPassword` (omit to reuse the store password) |
 
-Encode the keystore (single line, no wraps):
+From a `burton-sonos-android` checkout that already has `keystore.properties` and the JKS it names:
 
 ```bash
-base64 -w0 "$(grep ^storeFile= keystore.properties | cut -d= -f2-)"
+cd ~/Code/burton-sonos-android
+
+# required: APK signing keystore (single-line base64 of the JKS file)
+gh secret set KEYSTORE_BASE64 --repo Burton-Workspaces/burton-sonos-android \
+  --body "$(base64 -w0 "$(grep ^storeFile= keystore.properties | cut -d= -f2-)")"
+
+# required: storePassword
+gh secret set KEYSTORE_PASSWORD --repo Burton-Workspaces/burton-sonos-android \
+  --body "$(grep ^storePassword= keystore.properties | cut -d= -f2-)"
+
+# optional if keyAlias is not burton
+gh secret set KEY_ALIAS --repo Burton-Workspaces/burton-sonos-android \
+  --body "$(grep ^keyAlias= keystore.properties | cut -d= -f2-)"
+
+# optional if keyPassword differs from storePassword
+gh secret set KEY_PASSWORD --repo Burton-Workspaces/burton-sonos-android \
+  --body "$(grep ^keyPassword= keystore.properties | cut -d= -f2-)"
 ```
 
-On macOS, `base64 -w0` is not available; use `base64 -i release.jks | tr -d '\n'`.
+On macOS, `base64 -w0` is not available; use `base64 -i "$(grep ^storeFile= keystore.properties | cut -d= -f2-)" | tr -d '\n'` inside the `KEYSTORE_BASE64` `--body`.
 
-Paste that string into `KEYSTORE_BASE64`. Paste `storePassword` into `KEYSTORE_PASSWORD`.
+Omit `KEY_ALIAS` / `KEY_PASSWORD` if you use alias `burton` and the same password as the store. CI defaults those.
+
+Check:
+
+```bash
+gh secret list --repo Burton-Workspaces/burton-sonos-android
+```
+
+Pack a tagged APK after that (the tag must already exist and match `version.txt`):
+
+```bash
+gh workflow run "Release assets" --repo Burton-Workspaces/burton-sonos-android -f tag=v1.4.1
+```
+
+That workflow rebuilds `keystore.properties` from these secrets, runs `assembleRelease`, and uploads `burton-sonos-<version>.apk`.
+
+You can also set the same values in **Settings → Secrets and variables → Actions → New repository secret**. Encode the keystore (single line, no wraps) with `base64 -w0 "$(grep ^storeFile= keystore.properties | cut -d= -f2-)"`, then paste it into `KEYSTORE_BASE64` and paste `storePassword` into `KEYSTORE_PASSWORD`.
 
 If these secrets are empty, **Release assets** fails at “Configure release signing” even when tests pass. You can still `assembleRelease` locally and `gh release upload vX.Y.Z burton-sonos-X.Y.Z.apk`.
 
@@ -113,7 +143,7 @@ CI still rejects non-conventional subjects on `master` and on pull requests.
 ## 6. Verify
 
 1. Push a `docs:` or `ci:` commit (no version bump). **CI** and **Conventional commits** should be green. **Release** should succeed with pack skipped.
-2. Confirm secrets: **Actions → Release assets → Run workflow** with tag `v1.3.0` (or the current `version.txt` with a `v` prefix). The job must pass “Configure release signing” and upload `burton-sonos-<version>.apk`.
+2. Confirm secrets: **Actions → Release assets → Run workflow** with tag `v1.4.1` (or the current `version.txt` with a `v` prefix). The job must pass “Configure release signing” and upload `burton-sonos-<version>.apk`.
 3. Cut a real release with a `feat:` or `fix:` on `master`, merge the release-please PR. See [releases.md](releases.md).
 
 ## Troubleshooting
