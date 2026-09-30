@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.3.0](https://github.com/rconnelly/burton-sonos-android/compare/v1.2.0...v1.3.0) (2026-09-30)
+
+
+### Features
+
+* **sources:** scan for new library content ([0a380a1](https://github.com/rconnelly/burton-sonos-android/commit/0a380a1447d37ef7513d1852fd588b074554cd06))
+
 ## [1.2.0](https://github.com/rconnelly/burton-sonos-android/compare/v1.1.0...v1.2.0) (2026-09-30)
 
 
