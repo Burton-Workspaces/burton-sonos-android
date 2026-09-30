@@ -1,7 +1,7 @@
 # Builds a signed APK and attaches it to a GitHub Release.
 # Triggered by:
 #   - release.yml after release-please tags a version
-#   - pushing a vX.Y.Z tag (skipped when the release PR merge already tagged the commit)
+#   - pushing a vX.Y.Z tag (skipped when the tagged commit is a release-please bump)
 #   - workflow_dispatch (retries)
 name: Release assets
 
@@ -20,7 +20,7 @@ on:
         type: string
   push:
     tags:
-      - "v[0-9]+.*"
+      - "v*.*.*"
 
 permissions:
   contents: read
@@ -28,7 +28,7 @@ permissions:
 jobs:
   github-release:
     name: Build and upload APK
-    if: github.event_name != 'push' || !contains(github.event.head_commit.message, ': release ')
+    if: "${{ github.event_name != 'push' || (!contains(github.event.head_commit.message, ': release ') && !contains(github.event.head_commit.message, 'chore(release)')) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,14 +53,7 @@ jobs:
             echo "Merge the release-please PR (or bump version.txt) before packing."
             exit 1
           fi
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-      - uses: android-actions/setup-android@v3
-      - name: Point Gradle at the SDK
-        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+      - uses: ./.github/actions/setup-android-ci
       - name: Test
         run: ./gradlew --no-daemon testDebugUnitTest
       - name: Configure release signing

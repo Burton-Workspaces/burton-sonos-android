@@ -1,0 +1,21 @@
+name: Setup Android CI
+description: Java, Android SDK, and local.properties for Gradle
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+        cache: gradle
+    - uses: android-actions/setup-android@v4
+      with:
+        packages: platform-tools
+        log-accepted-android-sdk-licenses: "false"
+    - name: Point Gradle at the SDK
+      shell: bash
+      run: |
+        set -euo pipefail
+        chmod +x gradlew
+        echo "sdk.dir=$ANDROID_HOME" > local.properties

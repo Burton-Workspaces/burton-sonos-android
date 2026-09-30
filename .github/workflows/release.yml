@@ -25,14 +25,13 @@ jobs:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
   pack:
     name: Pack release APK
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.tag_name != ''
+    if: "${{ needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.tag_name != '' }}"
     uses: ./.github/workflows/release-assets.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
