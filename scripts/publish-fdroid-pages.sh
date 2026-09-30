@@ -2,8 +2,11 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <version>" >&2
+  echo "Usage: $0 [version]" >&2
   echo "  version  SemVer matching version.txt, with or without a v prefix (1.3.0 or v1.3.0)" >&2
+  echo "           Defaults to version.txt when omitted." >&2
+  echo >&2
+  echo "Loads fdroid-pages.env from the repo root if that file exists." >&2
   echo >&2
   echo "Required environment:" >&2
   echo "  FDROID_ROOT       Directory from \`fdroid init\` (config.yml + repo keystore)" >&2
@@ -16,16 +19,32 @@ usage() {
   exit 1
 }
 
-[[ $# -eq 1 ]] || usage
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+if [[ $# -gt 1 ]]; then
+  usage
+fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 export PATH="${HOME}/.local/bin:${PATH}"
 
-raw="$1"
+if [[ -f "$ROOT/fdroid-pages.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/fdroid-pages.env"
+  set +a
+fi
+
+if [[ $# -eq 1 ]]; then
+  raw="$1"
+else
+  raw="$(tr -d '[:space:]' < version.txt)"
+fi
 version="${raw#v}"
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Version must be MAJOR.MINOR.PATCH, got '$raw'" >&2
+  echo "Version must be SemVer 2.0 MAJOR.MINOR.PATCH, got '$raw'" >&2
   exit 1
 fi
 
@@ -42,7 +61,7 @@ if [[ -z "${FDROID_PAGES_DIR:-}" ]]; then
   fi
 fi
 
-: "${FDROID_ROOT:?Set FDROID_ROOT to the directory created by fdroid init}"
+: "${FDROID_ROOT:?Set FDROID_ROOT to the directory created by fdroid init (or put it in fdroid-pages.env)}"
 : "${FDROID_PAGES_DIR:?Clone Burton-Workspaces/burton-sonos-fdroid next to this repo, or set FDROID_PAGES_DIR}"
 
 FDROID_ROOT="$(cd "$FDROID_ROOT" && pwd)"
@@ -90,17 +109,27 @@ if [[ "${FDROID_ASSEMBLE:-0}" == 1 || ! -f "$apk" ]]; then
   cp app/build/outputs/apk/release/app-release.apk "$apk"
 fi
 
-mkdir -p "$FDROID_ROOT/repo"
+mkdir -p "$FDROID_ROOT/repo" "$FDROID_ROOT/metadata"
 cp "$apk" "$FDROID_ROOT/repo/"
+
+meta_src="$ROOT/fdroid/metadata/com.burton.sonos.yml"
+meta_dst="$FDROID_ROOT/metadata/com.burton.sonos.yml"
+if [[ -f "$meta_src" && ! -f "$meta_dst" ]]; then
+  cp "$meta_src" "$meta_dst"
+fi
+graphics_src="$ROOT/fdroid/metadata/com.burton.sonos"
+if [[ -d "$graphics_src" ]]; then
+  mkdir -p "$FDROID_ROOT/metadata/com.burton.sonos"
+  if command -v rsync >/dev/null; then
+    rsync -a "$graphics_src/" "$FDROID_ROOT/metadata/com.burton.sonos/"
+  else
+    cp -a "$graphics_src/." "$FDROID_ROOT/metadata/com.burton.sonos/"
+  fi
+fi
 
 (
   cd "$FDROID_ROOT"
-  if [[ ! -d metadata ]] || [[ -z "$(find metadata -name '*.yml' -print -quit 2>/dev/null)" ]]; then
-    update_args=(update --create-metadata)
-  else
-    update_args=(update)
-  fi
-  if ! fdroid "${update_args[@]}"; then
+  if ! fdroid update --create-metadata; then
     echo "fdroid update failed. If you saw 'res1 must be zero', Debian's androguard is too old for this APK." >&2
     echo "  pipx install fdroidserver && export PATH=\"\$HOME/.local/bin:\$PATH\"" >&2
     exit 1
