@@ -1,3 +1,14 @@
+# CI
+#
+# What: Runs unit tests so every pull request and every push to master is known
+#       compile-and-test green before anyone merges or cuts a release.
+# When: pull_request (any branch) and push to master.
+# Does not: bump versions, sign APKs, or create GitHub Releases.
+#
+# Steps:
+#   1. actions/checkout@v4 — fetch this commit
+#   2. ./.github/actions/setup-android-ci — Temurin 17, Android SDK, local.properties
+#   3. ./gradlew testDebugUnitTest — JVM unit tests only (no emulator)
 name: CI
 
 on:

@@ -1,5 +1,23 @@
-# Semantic versioning via release-please (conventional commits).
-# Merge the release PR to tag vX.Y.Z, create the GitHub Release, and attach the signed APK.
+# Release
+#
+# What: Runs release-please on master. From Conventional Commits since the last
+#       tag it either opens/updates a "chore(master): release X.Y.Z" PR, or,
+#       when that PR is merged, tags vX.Y.Z and creates the GitHub Release.
+# When: push to master.
+# Does not: run unit tests (see ci.yml) or sign the APK itself. Packing is the
+#           "Pack release APK" job, which calls release-assets.yml.
+#
+# Jobs:
+#   Release-please
+#     googleapis/release-please-action@v5 reads release-please-config.json and
+#     .release-please-manifest.json. skip-labeling avoids a GitHub API blip
+#     failing the job after the Release already exists.
+#     Only runs when github.repository is rconnelly/burton-sonos-android so
+#     forks do not open release PRs. If that name does not match this repo,
+#     this job is skipped and no version PR is opened.
+#   Pack release APK
+#     Runs only when release-please actually created a release (outputs
+#     release_created + tag_name). Reuses release-assets.yml with that tag.
 name: Release
 
 on:

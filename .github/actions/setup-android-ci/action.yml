@@ -1,3 +1,13 @@
+# Setup Android CI (composite action)
+#
+# What: Shared Gradle environment for ci.yml and release-assets.yml.
+# When: used by those workflows; not a standalone workflow.
+# Does not: run tests or assemble APKs.
+#
+# Steps:
+#   1. actions/setup-java@v4 — Temurin 17, Gradle cache
+#   2. android-actions/setup-android@v4 — Android SDK platform-tools
+#   3. Write local.properties sdk.dir=$ANDROID_HOME and chmod +x gradlew
 name: Setup Android CI
 description: Java, Android SDK, and local.properties for Gradle
 

@@ -1,3 +1,17 @@
+# Conventional commits
+#
+# What: Rejects commit subjects (and pull request titles) that are not
+#       Conventional Commits. release-please in release.yml uses those prefixes
+#       to decide SemVer bumps (feat = minor, fix = patch, BREAKING = major).
+# When: pull_request title edits/sync, and push to master.
+# Does not: bump version.txt or open a release PR; that is release.yml.
+#
+# Steps:
+#   1. actions/checkout@v4 (full history) — needed so --range can see commits
+#   2. ./scripts/test-conventional-commit.sh — sanity-check the checker itself
+#   3. PR: validate github.event.pull_request.title
+#   4. PR: validate every commit from base..head
+#   5. Push: validate every commit from before..sha
 name: Conventional commits
 
 on:
