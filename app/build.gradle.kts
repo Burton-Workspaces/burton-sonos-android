@@ -8,11 +8,23 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+val appVersion = rootProject.file("version.txt").readText().trim()
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
         keystorePropertiesFile.inputStream().use(::load)
     }
+}
+
+fun semverToVersionCode(version: String): Int {
+    val core = version.substringBefore('-')
+    val parts = core.split('.')
+    require(parts.size >= 3) { "version.txt must be SemVer MAJOR.MINOR.PATCH, got '$version'" }
+    val major = parts[0].toInt()
+    val minor = parts[1].toInt()
+    val patch = parts[2].takeWhile { it.isDigit() }.toInt()
+    return major * 1_000_000 + minor * 1_000 + patch
 }
 
 android {
@@ -23,8 +35,8 @@ android {
         applicationId = "com.burton.sonos"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = semverToVersionCode(appVersion)
+        versionName = appVersion
         vectorDrawables.useSupportLibrary = true
     }
 
