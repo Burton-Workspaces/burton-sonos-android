@@ -47,7 +47,6 @@ fun SearchScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Spacer(Modifier.height(12.dp))
         Text("Search", style = MaterialTheme.typography.headlineLarge, color = BurtonIvory)
         Text(
             "Artists, albums, tracks, playlists, composers, and genres",

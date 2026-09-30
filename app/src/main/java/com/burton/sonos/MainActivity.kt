@@ -254,9 +254,7 @@ private fun BurtonApp() {
         NavHost(
             navController = navController,
             startDestination = Routes.ROOMS,
-            modifier = Modifier
-                .padding(padding)
-                .statusBarsPadding(),
+            modifier = Modifier.padding(padding),
         ) {
             composable(Routes.ROOMS) {
                 RoomsScreen(

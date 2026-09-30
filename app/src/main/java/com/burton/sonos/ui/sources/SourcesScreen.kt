@@ -54,7 +54,6 @@ fun SourcesScreen(
     val sources = viewModel.sources()
     val household = snapshot.household
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

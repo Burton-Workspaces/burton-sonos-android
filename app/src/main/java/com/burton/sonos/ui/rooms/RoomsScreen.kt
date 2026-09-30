@@ -58,7 +58,6 @@ fun RoomsScreen(
             .fillMaxSize()
             .padding(horizontal = 20.dp),
     ) {
-        Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

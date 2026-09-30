@@ -57,7 +57,6 @@ fun NamedGroupsScreen(
             .fillMaxSize()
             .padding(horizontal = 20.dp),
     ) {
-        Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("Groups", style = MaterialTheme.typography.headlineLarge, color = BurtonIvory, modifier = Modifier.weight(1f))
             if (household != null) {

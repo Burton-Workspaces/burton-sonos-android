@@ -50,7 +50,6 @@ fun AlarmsScreen(
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     var editorId by remember { mutableStateOf<String?>(null) }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Spacer(Modifier.height(12.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
