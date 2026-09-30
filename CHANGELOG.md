@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.4.1](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.4.0...v1.4.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* remove extra top inset above screen titles ([b382799](https://github.com/Burton-Workspaces/burton-sonos-android/commit/b382799b49c585f45ccffafae9b5613118e46a5b))
+
 ## [1.4.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.3.0...v1.4.0) (2026-09-30)
 
 
