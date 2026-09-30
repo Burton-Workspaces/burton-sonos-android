@@ -15,19 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,26 +39,11 @@ fun AlarmsScreen(
     viewModel: AlarmsViewModel = hiltViewModel(),
 ) {
     val snapshot by viewModel.state.collectAsStateWithLifecycle()
+    val editorId by viewModel.editorId.collectAsStateWithLifecycle()
     val household = snapshot.household
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
-    var editorId by remember { mutableStateOf<String?>(null) }
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                "Alarms",
-                style = MaterialTheme.typography.headlineLarge,
-                color = BurtonIvory,
-                modifier = Modifier.weight(1f),
-            )
-            if (household != null) {
-                IconButton(onClick = { editorId = "new" }) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add alarm", tint = BurtonIvory)
-                }
-            }
-        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Spacer(Modifier.height(8.dp))
         Text(
             text = when {
                 household == null -> "Waiting for speakers"
@@ -87,13 +65,13 @@ fun AlarmsScreen(
                     roomName = household?.player(alarm.roomUuid)?.name ?: "Room",
                     is24Hour = is24Hour,
                     onToggle = { viewModel.setEnabled(alarm, it) },
-                    onClick = { editorId = alarm.id },
+                    onClick = { viewModel.edit(alarm.id) },
                 )
             }
         }
     }
     editorId?.let { id ->
-        AlarmEditorScreen(alarmId = id, onBack = { editorId = null })
+        AlarmEditorScreen(alarmId = id, onBack = viewModel::closeEditor)
     }
 }
 

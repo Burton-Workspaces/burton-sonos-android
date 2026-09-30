@@ -482,7 +482,7 @@ class SonosRepository @Inject constructor(
     private suspend fun importLiveNamedGroups(household: Household) {
         val live = household.groups.mapNotNull { group ->
             val members = household.visibleMembers(group)
-            if (members.isEmpty()) return@mapNotNull null
+            if (members.size < 2) return@mapNotNull null
             NamedGroup(
                 id = "live-" + members.map { it.uuid }.sorted().joinToString("-"),
                 name = household.groupName(group),

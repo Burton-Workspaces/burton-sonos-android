@@ -22,11 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -56,11 +54,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.burton.sonos.ui.alarms.AlarmsScreen
 import com.burton.sonos.ui.browse.BrowseScreen
 import com.burton.sonos.ui.components.NowPlayingBar
 import com.burton.sonos.ui.group.SpeakerGroupingSheet
-import com.burton.sonos.ui.groups.NamedGroupsScreen
 import com.burton.sonos.ui.navigation.Routes
 import com.burton.sonos.ui.room.RoomDetailScreen
 import com.burton.sonos.ui.rooms.RoomsScreen
@@ -168,10 +164,9 @@ private fun BurtonApp() {
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     val previous = navController.previousBackStackEntry?.destination?.route
-    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SEARCH, Routes.GROUPS, Routes.ALARMS)
+    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SEARCH)
     val selectedTab = when {
         route in tabs -> route
-        route?.startsWith("alarm") == true -> Routes.ALARMS
         route?.startsWith("browse") == true && previous == Routes.SEARCH -> Routes.SEARCH
         route?.startsWith("browse") == true -> Routes.SOURCES
         else -> Routes.ROOMS
@@ -233,20 +228,6 @@ private fun BurtonApp() {
                         label = { Text("Search") },
                         colors = navColors(selectedTab == Routes.SEARCH),
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.GROUPS,
-                        onClick = { navController.goTab(Routes.GROUPS) },
-                        icon = { Icon(Icons.Rounded.SpeakerGroup, contentDescription = "Groups") },
-                        label = { Text("Groups") },
-                        colors = navColors(selectedTab == Routes.GROUPS),
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.ALARMS,
-                        onClick = { navController.goTab(Routes.ALARMS) },
-                        icon = { Icon(Icons.Rounded.Alarm, contentDescription = "Alarms") },
-                        label = { Text("Alarms") },
-                        colors = navColors(selectedTab == Routes.ALARMS),
-                    )
                 }
             }
         },
@@ -274,9 +255,6 @@ private fun BurtonApp() {
                     onOpenGrouping = { grouping = true },
                 )
             }
-            composable(Routes.GROUPS) {
-                NamedGroupsScreen()
-            }
             composable(Routes.SOURCES) {
                 SourcesScreen(
                     onBrowse = { id, title -> navController.navigate(Routes.browse(id, title)) },
@@ -298,9 +276,6 @@ private fun BurtonApp() {
                     onBack = { navController.popBackStack() },
                     onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
                 )
-            }
-            composable(Routes.ALARMS) {
-                AlarmsScreen()
             }
         }
     }
