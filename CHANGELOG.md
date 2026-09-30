@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.4.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.3.0...v1.4.0) (2026-09-30)
+
+
+### Features
+
+* open alarms, groups, and settings as full-screen modals ([ea17708](https://github.com/Burton-Workspaces/burton-sonos-android/commit/ea17708a4eb743fc1b3cbd68793561f212d3b078))
+
 ## [1.3.0](https://github.com/rconnelly/burton-sonos-android/compare/v1.2.0...v1.3.0) (2026-09-30)
 
 
