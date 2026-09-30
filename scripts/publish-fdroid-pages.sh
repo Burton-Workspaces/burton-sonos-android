@@ -20,6 +20,7 @@ usage() {
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+export PATH="${HOME}/.local/bin:${PATH}"
 
 raw="$1"
 version="${raw#v}"
@@ -64,7 +65,18 @@ if [[ ! -d "$FDROID_PAGES_DIR/.git" ]]; then
   exit 1
 fi
 if ! command -v fdroid >/dev/null; then
-  echo "fdroid is required (apt install fdroidserver, or pipx install fdroidserver)." >&2
+  echo "fdroid is required. Debian 2.2.1 cannot scan this APK; install a current fdroidserver:" >&2
+  echo "  pipx install fdroidserver" >&2
+  echo "  export PATH=\"\$HOME/.local/bin:\$PATH\"" >&2
+  exit 1
+fi
+if [[ "$(command -v fdroid)" == /usr/bin/fdroid ]]; then
+  echo "Using $(command -v fdroid) (likely Debian 2.2.1)." >&2
+  echo "That Androguard cannot parse AGP 8.7 APKs (res1 must be zero!)." >&2
+  echo "Install a current fdroidserver and put it first on PATH:" >&2
+  echo "  pipx install fdroidserver" >&2
+  echo "  export PATH=\"\$HOME/.local/bin:\$PATH\"" >&2
+  echo "Then: which fdroid   # should print $HOME/.local/bin/fdroid" >&2
   exit 1
 fi
 
@@ -84,9 +96,14 @@ cp "$apk" "$FDROID_ROOT/repo/"
 (
   cd "$FDROID_ROOT"
   if [[ ! -d metadata ]] || [[ -z "$(find metadata -name '*.yml' -print -quit 2>/dev/null)" ]]; then
-    fdroid update --create-metadata
+    update_args=(update --create-metadata)
   else
-    fdroid update
+    update_args=(update)
+  fi
+  if ! fdroid "${update_args[@]}"; then
+    echo "fdroid update failed. If you saw 'res1 must be zero', Debian's androguard is too old for this APK." >&2
+    echo "  pipx install fdroidserver && export PATH=\"\$HOME/.local/bin:\$PATH\"" >&2
+    exit 1
   fi
 )
 

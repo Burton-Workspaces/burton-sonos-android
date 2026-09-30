@@ -26,10 +26,17 @@ Rotating the **repo** key means every user must re-add the repository. Rotating 
 Do this on a machine that is **not** the public web server (laptop is fine).
 
 ```bash
-sudo apt install fdroidserver   # or: pipx install fdroidserver
+pipx install fdroidserver
+export PATH="$HOME/.local/bin:$PATH"
+which fdroid   # must be $HOME/.local/bin/fdroid, not /usr/bin/fdroid
 mkdir -p ~/fdroid && cd ~/fdroid
 fdroid init
+chmod 0600 config.yml
 ```
+
+Do **not** use Debian’s `apt install fdroidserver` (2.2.1). That stack’s Androguard cannot scan APKs from Android Gradle Plugin 8.7 (`res1 must be zero!` / `resources.arsc`). `./scripts/publish-fdroid-pages.sh` prepends `~/.local/bin` and refuses `/usr/bin/fdroid` for that reason.
+
+If `config.yml` sets `repo_icon` to `repo/icons/icon.png`, change it to a PNG that lives in `~/fdroid` (for example `fdroid-icon.png`). That warning is unrelated to the Androguard crash.
 
 That writes `config.yml` and a new `keystore.jks`. Edit `config.yml` for `repo_name`, `repo_url`, and `repo_description`. Set `repo_url` to:
 

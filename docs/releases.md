@@ -88,11 +88,15 @@ gh auth status
 **3. F-Droid index key** (private machine; not the Pages repo)
 
 ```bash
-sudo apt install fdroidserver    # or: pipx install fdroidserver
+pipx install fdroidserver
+export PATH="$HOME/.local/bin:$PATH"
+which fdroid   # $HOME/.local/bin/fdroid — not Debian /usr/bin/fdroid
 mkdir -p ~/fdroid && cd ~/fdroid
 fdroid init
 chmod 0600 config.yml
 ```
+
+Debian `fdroidserver` 2.2.1 cannot scan this app (`androguard` / `res1 must be zero!`). Details: [fdroid.md](fdroid.md).
 
 In `~/fdroid/config.yml` set `repo_url` to `https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo` and set `repo_name` (for example `Burton Sonos`). Details: [fdroid.md](fdroid.md).
 
