@@ -89,7 +89,7 @@ fun SearchScreen(
         )
         Spacer(Modifier.height(16.dp))
         when {
-            ui.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ui.loading -> Box(Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = BurtonSand)
             }
             ui.error != null -> Text(ui.error ?: "", color = BurtonIvory)
@@ -121,10 +121,36 @@ fun SearchScreen(
                                 if (item.isContainer) onOpenFolder(item.id, item.title)
                                 else viewModel.play(item)
                             },
+                            onMore = if (item.canPlay) {
+                                { viewModel.openActions(item) }
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
             }
         }
+    }
+    ui.actionsItem?.let { item ->
+        TrackActionsSheet(
+            item = item,
+            page = ui.actionPage,
+            groupName = ui.groupName,
+            playlists = ui.playlists,
+            playlistsLoading = ui.playlistsLoading,
+            newPlaylistName = ui.newPlaylistName,
+            busy = ui.busy,
+            notice = ui.notice,
+            onDismiss = viewModel::dismissActions,
+            onPlayAction = viewModel::runPlayAction,
+            onSaveFavorite = viewModel::saveFavorite,
+            onOpenPlaylists = viewModel::openPlaylists,
+            onBackToActions = viewModel::backToActions,
+            onOpenNewPlaylist = viewModel::openNewPlaylist,
+            onNewPlaylistName = viewModel::onNewPlaylistName,
+            onAddToPlaylist = viewModel::addToPlaylist,
+            onCreatePlaylist = viewModel::createPlaylistAndAdd,
+        )
     }
 }

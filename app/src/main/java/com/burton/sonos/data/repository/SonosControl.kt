@@ -10,6 +10,7 @@ import com.burton.sonos.domain.Alarm
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.Household
 import com.burton.sonos.domain.NowPlaying
+import com.burton.sonos.domain.PlayAction
 import com.burton.sonos.domain.Player
 import com.burton.sonos.domain.SystemSource
 import com.burton.sonos.domain.Track
@@ -191,55 +192,150 @@ class SonosControl @Inject constructor(
     }
 
     suspend fun playUri(coordinator: Player, uri: String, metadata: String) {
-        val isContainer = uri.contains("x-rincon-cpcontainer") ||
-            uri.contains("x-rincon-playlist") ||
-            metadata.contains("object.container")
-        if (isContainer || uri.startsWith("x-rincon-playlist") || uri.startsWith("x-rincon-cpcontainer")) {
-            soap.action(
-                baseUrl = coordinator.baseUrl,
-                controlPath = SonosServices.AV_TRANSPORT_PATH,
-                serviceType = SonosServices.AV_TRANSPORT,
-                action = "RemoveAllTracksFromQueue",
-                args = mapOf("InstanceID" to "0"),
-            )
-            soap.action(
-                baseUrl = coordinator.baseUrl,
-                controlPath = SonosServices.AV_TRANSPORT_PATH,
-                serviceType = SonosServices.AV_TRANSPORT,
-                action = "AddURIToQueue",
-                args = mapOf(
-                    "InstanceID" to "0",
-                    "EnqueuedURI" to uri,
-                    "EnqueuedURIMetaData" to metadata,
-                    "DesiredFirstTrackNumberEnqueued" to "0",
-                    "EnqueueAsNext" to "0",
-                ),
-            )
-            soap.action(
-                baseUrl = coordinator.baseUrl,
-                controlPath = SonosServices.AV_TRANSPORT_PATH,
-                serviceType = SonosServices.AV_TRANSPORT,
-                action = "SetAVTransportURI",
-                args = mapOf(
-                    "InstanceID" to "0",
-                    "CurrentURI" to "x-rincon-queue:${coordinator.uuid}#0",
-                    "CurrentURIMetaData" to "",
-                ),
-            )
-        } else {
-            soap.action(
-                baseUrl = coordinator.baseUrl,
-                controlPath = SonosServices.AV_TRANSPORT_PATH,
-                serviceType = SonosServices.AV_TRANSPORT,
-                action = "SetAVTransportURI",
-                args = mapOf(
-                    "InstanceID" to "0",
-                    "CurrentURI" to uri,
-                    "CurrentURIMetaData" to metadata,
-                ),
-            )
+        enqueueAndPlay(coordinator, uri, metadata, PlayAction.PLAY_NOW)
+    }
+
+    suspend fun enqueueAndPlay(
+        coordinator: Player,
+        uri: String,
+        metadata: String,
+        action: PlayAction,
+    ) {
+        when (action) {
+            PlayAction.PLAY_NOW -> {
+                if (shouldUseQueue(uri, metadata)) {
+                    replaceQueue(coordinator, uri, metadata)
+                } else {
+                    setTransportUri(coordinator, uri, metadata)
+                    play(coordinator)
+                }
+            }
+            PlayAction.REPLACE_QUEUE -> replaceQueue(coordinator, uri, metadata)
+            PlayAction.PLAY_NEXT -> {
+                addUriToQueue(coordinator, uri, metadata, asNext = true)
+                if (!isPlayingQueue(coordinator)) {
+                    setQueue(coordinator)
+                    play(coordinator)
+                }
+            }
+            PlayAction.ADD_TO_QUEUE -> {
+                addUriToQueue(coordinator, uri, metadata, asNext = false)
+            }
         }
+    }
+
+    suspend fun addUriToQueue(
+        coordinator: Player,
+        uri: String,
+        metadata: String,
+        asNext: Boolean,
+    ) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "AddURIToQueue",
+            args = mapOf(
+                "InstanceID" to "0",
+                "EnqueuedURI" to uri,
+                "EnqueuedURIMetaData" to metadata,
+                "DesiredFirstTrackNumberEnqueued" to "0",
+                "EnqueueAsNext" to if (asNext) "1" else "0",
+            ),
+        )
+    }
+
+    suspend fun replaceQueue(coordinator: Player, uri: String, metadata: String) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "RemoveAllTracksFromQueue",
+            args = mapOf("InstanceID" to "0"),
+        )
+        addUriToQueue(coordinator, uri, metadata, asNext = false)
+        setQueue(coordinator)
         play(coordinator)
+    }
+
+    suspend fun setQueue(coordinator: Player) {
+        setTransportUri(coordinator, "x-rincon-queue:${coordinator.uuid}#0", "")
+    }
+
+    suspend fun isPlayingQueue(coordinator: Player): Boolean {
+        val uri = soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "GetMediaInfo",
+            args = mapOf("InstanceID" to "0"),
+        )["CurrentURI"].orEmpty()
+        return uri.startsWith("x-rincon-queue:")
+    }
+
+    suspend fun saveFavorite(player: Player, item: BrowseItem) {
+        createObject(player, "FV:2", DidlLiteParser.existingOrSimpleDidl(item))
+    }
+
+    suspend fun sonosPlaylists(player: Player): List<BrowseItem> = browse(player, "SQ:")
+
+    suspend fun addToSonosPlaylist(player: Player, playlistId: String, item: BrowseItem) {
+        createObject(player, playlistId, DidlLiteParser.existingOrSimpleDidl(item))
+    }
+
+    suspend fun createSonosPlaylist(player: Player, title: String): String {
+        val result = createObject(
+            player,
+            "SQ:",
+            DidlLiteParser.playlistContainerDidl(title),
+        )
+        return result["ObjectID"].orEmpty().ifBlank { result["AssignedObjectID"].orEmpty() }
+    }
+
+    private suspend fun createObject(
+        player: Player,
+        parentId: String,
+        elements: String,
+    ): Map<String, String> {
+        return runCatching {
+            soap.action(
+                baseUrl = player.baseUrl,
+                controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+                serviceType = SonosServices.CONTENT_DIRECTORY,
+                action = "CreateObject",
+                args = mapOf("ContainerID" to parentId, "Elements" to elements),
+            )
+        }.recoverCatching {
+            soap.action(
+                baseUrl = player.baseUrl,
+                controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+                serviceType = SonosServices.CONTENT_DIRECTORY,
+                action = "CreateObject",
+                args = mapOf("ObjectID" to parentId, "Elements" to elements),
+            )
+        }.getOrThrow()
+    }
+
+    private suspend fun setTransportUri(coordinator: Player, uri: String, metadata: String) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "SetAVTransportURI",
+            args = mapOf(
+                "InstanceID" to "0",
+                "CurrentURI" to uri,
+                "CurrentURIMetaData" to metadata,
+            ),
+        )
+    }
+
+    private fun shouldUseQueue(uri: String, metadata: String): Boolean {
+        return uri.contains("x-rincon-cpcontainer") ||
+            uri.contains("x-rincon-playlist") ||
+            uri.startsWith("x-rincon-playlist") ||
+            uri.startsWith("x-rincon-cpcontainer") ||
+            metadata.contains("object.container")
     }
 
     suspend fun playLineIn(coordinator: Player, sourceUuid: String) {

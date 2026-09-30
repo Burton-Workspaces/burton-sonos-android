@@ -7,16 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,7 +79,11 @@ fun BrowseScreen(
 }
 
 @Composable
-fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
+fun BrowseRow(
+    item: BrowseItem,
+    onClick: () -> Unit,
+    onMore: (() -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -103,9 +106,12 @@ fun BrowseRow(item: BrowseItem, onClick: () -> Unit) {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = BurtonMute, maxLines = 1)
             }
         }
-        if (item.canPlay && !item.isContainer) {
+        if (onMore != null) {
+            IconButton(onClick = onMore) {
+                Icon(Icons.Rounded.MoreHoriz, contentDescription = "More", tint = BurtonMute)
+            }
+        } else if (item.canPlay && !item.isContainer) {
             Text("Play", style = MaterialTheme.typography.labelLarge, color = BurtonSand)
         }
     }
-    Spacer(Modifier.height(0.dp))
 }

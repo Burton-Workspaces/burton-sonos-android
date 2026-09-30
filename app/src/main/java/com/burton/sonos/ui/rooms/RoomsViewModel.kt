@@ -22,10 +22,18 @@ class RoomsViewModel @Inject constructor(
     }
 
     fun select(groupId: String) {
-        viewModelScope.launch { repository.selectGroup(groupId) }
+        repository.selectGroup(groupId)
     }
 
     fun toggle() {
         viewModelScope.launch { repository.togglePlay() }
+    }
+
+    fun adjustVolume(delta: Int) {
+        repository.adjustVolume(delta)
+    }
+
+    fun setGroupVolume(groupId: String, volume: Int) {
+        repository.setGroupVolume(groupId, volume)
     }
 }

@@ -33,8 +33,12 @@ fun NowPlayingBar(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (snapshot.household == null) {
+        NowPlayingSkeleton(modifier)
+        return
+    }
     val group = snapshot.selectedGroup ?: return
-    val household = snapshot.household ?: return
+    val household = snapshot.household
     val playback = snapshot.selectedPlayback
     val track = playback?.track
     Row(

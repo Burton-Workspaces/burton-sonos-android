@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -35,14 +37,19 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -53,6 +60,8 @@ import com.burton.sonos.ui.alarms.AlarmEditorScreen
 import com.burton.sonos.ui.alarms.AlarmsScreen
 import com.burton.sonos.ui.browse.BrowseScreen
 import com.burton.sonos.ui.components.NowPlayingBar
+import com.burton.sonos.ui.group.SpeakerGroupingSheet
+import com.burton.sonos.ui.groups.NamedGroupsScreen
 import com.burton.sonos.ui.navigation.Routes
 import com.burton.sonos.ui.room.RoomDetailScreen
 import com.burton.sonos.ui.rooms.RoomsScreen
@@ -69,6 +78,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var permitted by mutableStateOf(false)
+    var volumeDeltaHandler: ((Int) -> Boolean)? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -90,6 +100,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val volume = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+            event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+        val handler = volumeDeltaHandler
+        if (!volume || handler == null) return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val delta = if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) VOLUME_STEP else -VOLUME_STEP
+            handler(delta)
+        }
+        return true
     }
 
     private fun hasNetworkPermission(): Boolean {
@@ -146,59 +168,84 @@ private fun BurtonApp() {
     val snapshot by roomsViewModel.state.collectAsStateWithLifecycle()
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
-    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SEARCH, Routes.ALARMS)
-    val showChrome = route in tabs
+    val previous = navController.previousBackStackEntry?.destination?.route
+    val tabs = listOf(Routes.ROOMS, Routes.GROUPS, Routes.SOURCES, Routes.SEARCH, Routes.ALARMS)
+    val selectedTab = when {
+        route in tabs -> route
+        route?.startsWith("alarm") == true -> Routes.ALARMS
+        route?.startsWith("browse") == true && previous == Routes.SEARCH -> Routes.SEARCH
+        route?.startsWith("browse") == true -> Routes.SOURCES
+        else -> Routes.ROOMS
+    }
+    var grouping by remember { mutableStateOf(false) }
+    val activity = LocalContext.current as? MainActivity
+    val nowPlayingOpen = route == Routes.ROOM
+    DisposableEffect(activity, nowPlayingOpen) {
+        if (activity == null || !nowPlayingOpen) {
+            return@DisposableEffect onDispose { }
+        }
+        activity.volumeDeltaHandler = { delta ->
+            roomsViewModel.adjustVolume(delta)
+            true
+        }
+        onDispose { activity.volumeDeltaHandler = null }
+    }
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(BurtonBlack),
         containerColor = BurtonBlack,
         bottomBar = {
-            if (showChrome) {
-                Column(
-                    modifier = Modifier
-                        .background(BurtonBlack)
-                        .navigationBarsPadding(),
-                ) {
-                    NowPlayingBar(
-                        snapshot = snapshot,
-                        onToggle = roomsViewModel::toggle,
-                        onOpen = {
-                            snapshot.selectedGroupId?.let {
-                                navController.navigate(Routes.room(it))
-                            }
-                        },
+            Column(
+                modifier = Modifier
+                    .background(BurtonBlack)
+                    .navigationBarsPadding(),
+            ) {
+                NowPlayingBar(
+                    snapshot = snapshot,
+                    onToggle = roomsViewModel::toggle,
+                    onOpen = {
+                        snapshot.selectedGroupId?.let {
+                            navController.navigate(Routes.room(it))
+                        }
+                    },
+                )
+                NavigationBar(containerColor = BurtonBlack, contentColor = BurtonIvory) {
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.ROOMS,
+                        onClick = { navController.goTab(Routes.ROOMS) },
+                        icon = { Icon(Icons.Rounded.Home, contentDescription = "System") },
+                        label = { Text("System") },
+                        colors = navColors(selectedTab == Routes.ROOMS),
                     )
-                    NavigationBar(containerColor = BurtonBlack, contentColor = BurtonIvory) {
-                        NavigationBarItem(
-                            selected = route == Routes.ROOMS,
-                            onClick = { navController.navigate(Routes.ROOMS) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.Home, contentDescription = "System") },
-                            label = { Text("System") },
-                            colors = navColors(route == Routes.ROOMS),
-                        )
-                        NavigationBarItem(
-                            selected = route == Routes.SOURCES,
-                            onClick = { navController.navigate(Routes.SOURCES) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.LibraryMusic, contentDescription = "Sources") },
-                            label = { Text("Sources") },
-                            colors = navColors(route == Routes.SOURCES),
-                        )
-                        NavigationBarItem(
-                            selected = route == Routes.SEARCH,
-                            onClick = { navController.navigate(Routes.SEARCH) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
-                            label = { Text("Search") },
-                            colors = navColors(route == Routes.SEARCH),
-                        )
-                        NavigationBarItem(
-                            selected = route == Routes.ALARMS,
-                            onClick = { navController.navigate(Routes.ALARMS) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.Alarm, contentDescription = "Alarms") },
-                            label = { Text("Alarms") },
-                            colors = navColors(route == Routes.ALARMS),
-                        )
-                    }
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.GROUPS,
+                        onClick = { navController.goTab(Routes.GROUPS) },
+                        icon = { Icon(Icons.Rounded.SpeakerGroup, contentDescription = "Groups") },
+                        label = { Text("Groups") },
+                        colors = navColors(selectedTab == Routes.GROUPS),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.SOURCES,
+                        onClick = { navController.goTab(Routes.SOURCES) },
+                        icon = { Icon(Icons.Rounded.LibraryMusic, contentDescription = "Sources") },
+                        label = { Text("Sources") },
+                        colors = navColors(selectedTab == Routes.SOURCES),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.SEARCH,
+                        onClick = { navController.goTab(Routes.SEARCH) },
+                        icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+                        label = { Text("Search") },
+                        colors = navColors(selectedTab == Routes.SEARCH),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.ALARMS,
+                        onClick = { navController.goTab(Routes.ALARMS) },
+                        icon = { Icon(Icons.Rounded.Alarm, contentDescription = "Alarms") },
+                        label = { Text("Alarms") },
+                        colors = navColors(selectedTab == Routes.ALARMS),
+                    )
                 }
             }
         },
@@ -211,13 +258,25 @@ private fun BurtonApp() {
                 .statusBarsPadding(),
         ) {
             composable(Routes.ROOMS) {
-                RoomsScreen(onOpenRoom = { navController.navigate(Routes.room(it)) })
+                RoomsScreen(
+                    onOpenRoom = { navController.navigate(Routes.room(it)) },
+                    onOpenGrouping = { id ->
+                        roomsViewModel.select(id)
+                        grouping = true
+                    },
+                )
             }
             composable(
                 Routes.ROOM,
                 arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
             ) {
-                RoomDetailScreen(onBack = { navController.popBackStack() })
+                RoomDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenGrouping = { grouping = true },
+                )
+            }
+            composable(Routes.GROUPS) {
+                NamedGroupsScreen()
             }
             composable(Routes.SOURCES) {
                 SourcesScreen(
@@ -254,6 +313,19 @@ private fun BurtonApp() {
                 AlarmEditorScreen(onBack = { navController.popBackStack() })
             }
         }
+    }
+    if (grouping) {
+        SpeakerGroupingSheet(onDismiss = { grouping = false })
+    }
+}
+
+private const val VOLUME_STEP = 4
+
+private fun NavHostController.goTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 

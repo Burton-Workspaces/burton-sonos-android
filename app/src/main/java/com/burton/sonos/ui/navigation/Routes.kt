@@ -3,6 +3,7 @@ package com.burton.sonos.ui.navigation
 object Routes {
     const val ROOMS = "rooms"
     const val ROOM = "room/{groupId}"
+    const val GROUPS = "groups"
     const val SOURCES = "sources"
     const val SEARCH = "search"
     const val BROWSE = "browse/{objectId}?title={title}"

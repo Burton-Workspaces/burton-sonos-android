@@ -26,11 +26,11 @@ data class DiscoveredSpeaker(
 class SpeakerDiscovery @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    suspend fun discover(timeoutMs: Long = 3_500): List<DiscoveredSpeaker> {
+    suspend fun discover(timeoutMs: Long = 2_400): List<DiscoveredSpeaker> {
         val found = linkedSetOf<String>()
         ssdpDiscover(timeoutMs, found)
         if (found.isEmpty()) {
-            mdnsDiscover(timeoutMs.coerceAtMost(2_500), found)
+            mdnsDiscover(timeoutMs.coerceAtMost(1_600), found)
         }
         return found.map { DiscoveredSpeaker(it) }
     }
@@ -46,7 +46,7 @@ class SpeakerDiscovery @Inject constructor(
                 DatagramSocket(null).use { socket ->
                     socket.reuseAddress = true
                     socket.broadcast = true
-                    socket.soTimeout = 750
+                    socket.soTimeout = 250
                     socket.bind(InetSocketAddress(0))
                     val payload = SEARCH.toByteArray(Charsets.UTF_8)
                     val group = InetAddress.getByName(SSDP_HOST)
@@ -61,8 +61,9 @@ class SpeakerDiscovery @Inject constructor(
                             val message = String(packet.data, 0, packet.length, Charsets.UTF_8)
                             if (!isSonos(message)) continue
                             hostFromLocation(message)?.let { found += it }
+                            if (found.isNotEmpty()) return@withContext
                         } catch (_: SocketTimeoutException) {
-                            // keep waiting until deadline
+                            if (found.isNotEmpty()) return@withContext
                         }
                     }
                 }

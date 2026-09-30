@@ -116,6 +116,19 @@ data class LibrarySearchSection(
     val items: List<BrowseItem>,
 )
 
+data class NamedGroup(
+    val id: String,
+    val name: String,
+    val memberUuids: List<String>,
+)
+
+enum class PlayAction {
+    PLAY_NOW,
+    PLAY_NEXT,
+    ADD_TO_QUEUE,
+    REPLACE_QUEUE,
+}
+
 
 data class SystemSource(
     val id: String,

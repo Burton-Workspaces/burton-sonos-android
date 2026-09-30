@@ -1,7 +1,17 @@
 package com.burton.sonos.data.parse
 
 import com.burton.sonos.data.library.LibrarySearch
+import com.burton.sonos.data.parse.DidlLiteParser
+import com.burton.sonos.data.parse.TinyJson
+import com.burton.sonos.data.parse.ZoneGroupStateParser
+import com.burton.sonos.data.repository.HouseholdCache
+import com.burton.sonos.data.repository.NamedGroupCache
 import com.burton.sonos.domain.Alarm
+import com.burton.sonos.domain.BrowseItem
+import com.burton.sonos.domain.Household
+import com.burton.sonos.domain.NamedGroup
+import com.burton.sonos.domain.Player
+import com.burton.sonos.domain.ZoneGroup
 import com.burton.sonos.domain.daysFromRecurrence
 import com.burton.sonos.domain.recurrenceFromDays
 import org.junit.Assert.assertEquals
@@ -151,6 +161,112 @@ class LibrarySearchTest {
         assertEquals("A:TRACKS:Night Drive", LibrarySearch.objectId("A:TRACKS", "  Night Drive  "))
         assertEquals("A:ALBUM:Getz/Gilberto", LibrarySearch.objectId("A:ALBUM", "Getz/Gilberto"))
         assertEquals(6, LibrarySearch.categories.size)
+    }
+}
+
+class TinyJsonTest {
+    @Test
+    fun roundTripsObjectsAndArrays() {
+        val encoded = TinyJson.stringify(
+            mapOf(
+                "name" to "Kitchen + Dining",
+                "count" to 2,
+                "on" to true,
+                "rooms" to listOf("Kitchen", "Dining"),
+            ),
+        )
+        val parsed = TinyJson.parseObject(encoded)
+        assertEquals("Kitchen + Dining", parsed["name"])
+        assertEquals(2L, parsed["count"])
+        assertEquals(true, parsed["on"])
+        assertEquals(listOf("Kitchen", "Dining"), parsed["rooms"])
+    }
+}
+
+class HouseholdCacheTest {
+    @Test
+    fun roundTripsHousehold() {
+        val household = Household(
+            id = "HH",
+            groups = listOf(
+                ZoneGroup(id = "RINCON_A:1", coordinatorUuid = "RINCON_A", memberUuids = listOf("RINCON_A", "RINCON_B")),
+            ),
+            players = listOf(
+                Player(
+                    uuid = "RINCON_A",
+                    name = "Kitchen",
+                    ip = "192.168.1.20",
+                    port = 1400,
+                    location = "http://192.168.1.20:1400/xml/device_description.xml",
+                    model = "S6",
+                    softwareVersion = "80",
+                    invisible = false,
+                    hasLineIn = true,
+                    hasHdmi = false,
+                ),
+                Player(
+                    uuid = "RINCON_B",
+                    name = "Dining",
+                    ip = "192.168.1.21",
+                    port = 1400,
+                    location = "http://192.168.1.21:1400/xml/device_description.xml",
+                    model = "S5",
+                    softwareVersion = "80",
+                    invisible = false,
+                    hasLineIn = false,
+                    hasHdmi = false,
+                ),
+            ),
+        )
+        val restored = HouseholdCache.decode(HouseholdCache.encode(household))
+        requireNotNull(restored)
+        assertEquals("HH", restored.id)
+        assertEquals(listOf("RINCON_A", "RINCON_B"), restored.groups[0].memberUuids)
+        assertEquals("Kitchen", restored.player("RINCON_A")?.name)
+        assertEquals(true, restored.player("RINCON_A")?.hasLineIn)
+    }
+}
+
+class NamedGroupCacheTest {
+    @Test
+    fun roundTripsNamedGroups() {
+        val groups = listOf(
+            NamedGroup(id = "g1", name = "Downstairs", memberUuids = listOf("RINCON_A", "RINCON_B")),
+            NamedGroup(id = "g2", name = "Office", memberUuids = listOf("RINCON_C")),
+        )
+        val restored = NamedGroupCache.decode(NamedGroupCache.encode(groups))
+        assertEquals(groups, restored)
+    }
+
+    @Test
+    fun emptyAndInvalidAreEmpty() {
+        assertEquals(emptyList<NamedGroup>(), NamedGroupCache.decode(""))
+        assertEquals(emptyList<NamedGroup>(), NamedGroupCache.decode("not-json"))
+    }
+}
+
+class DidlBuilderTest {
+    @Test
+    fun buildsPlaylistContainer() {
+        val didl = DidlLiteParser.playlistContainerDidl("Late Night")
+        assertEquals(true, didl.contains("<dc:title>Late Night</dc:title>"))
+        assertEquals(true, didl.contains("playlistContainer"))
+    }
+
+    @Test
+    fun prefersExistingMetadata() {
+        val item = BrowseItem(
+            id = "A:TRACKS/1",
+            parentId = "A:TRACKS",
+            title = "Night Drive",
+            subtitle = "Analog Heart",
+            albumArtUrl = null,
+            uri = "x-file-cifs://host/track.flac",
+            metadata = "<DIDL-Lite><item id=\"1\"></item></DIDL-Lite>",
+            upnpClass = "object.item.audioItem.musicTrack",
+            isContainer = false,
+        )
+        assertEquals(item.metadata, DidlLiteParser.existingOrSimpleDidl(item))
     }
 }
 

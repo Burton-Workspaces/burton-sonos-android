@@ -106,4 +106,32 @@ object DidlLiteParser {
             "<upnp:class>${Xml.escapeXml(el.childText("class"))}</upnp:class>" +
             "</item></DIDL-Lite>"
     }
+
+    fun existingOrSimpleDidl(item: BrowseItem): String {
+        val existing = item.metadata?.trim().orEmpty()
+        if (existing.startsWith("<")) return existing
+        return simpleItemDidl(item)
+    }
+
+    fun simpleItemDidl(item: BrowseItem): String {
+        val res = item.uri?.let { "<res>${Xml.escapeXml(it)}</res>" }.orEmpty()
+        val upnpClass = item.upnpClass.ifBlank { "object.item.audioItem.musicTrack" }
+        return "<DIDL-Lite xmlns:dc=\"http://purl.org/dc/elements/1.1/\" " +
+            "xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" " +
+            "xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\">" +
+            "<item id=\"${Xml.escapeXml(item.id)}\" parentID=\"${Xml.escapeXml(item.parentId)}\" restricted=\"true\">" +
+            res +
+            "<dc:title>${Xml.escapeXml(item.title)}</dc:title>" +
+            "<upnp:class>${Xml.escapeXml(upnpClass)}</upnp:class>" +
+            "</item></DIDL-Lite>"
+    }
+
+    fun playlistContainerDidl(title: String): String =
+        "<DIDL-Lite xmlns:dc=\"http://purl.org/dc/elements/1.1/\" " +
+            "xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\" " +
+            "xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\">" +
+            "<item id=\"\" restricted=\"false\">" +
+            "<dc:title>${Xml.escapeXml(title)}</dc:title>" +
+            "<upnp:class>object.container.playlistContainer</upnp:class>" +
+            "</item></DIDL-Lite>"
 }
