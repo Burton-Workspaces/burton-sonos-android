@@ -194,6 +194,29 @@ class AlarmListParserTest {
         assertEquals(true, alarms[0].enabled)
         assertEquals(true, alarms[0].includeLinkedZones)
     }
+
+    @Test
+    fun parsesSoapTextWithDidlAndAmpersandUri() {
+        val envelope = """
+            <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+              <s:Body>
+                <u:ListAlarmsResponse xmlns:u="urn:schemas-upnp-org:service:AlarmClock:1">
+                  <CurrentAlarmList>&lt;Alarms&gt;&lt;Alarm ID=&quot;64&quot; StartTime=&quot;06:00:00&quot; Duration=&quot;01:00:00&quot; Recurrence=&quot;ON_6&quot; Enabled=&quot;1&quot; RoomUUID=&quot;RINCON_KITCHEN&quot; ProgramURI=&quot;x-rincon-cpcontainer:00040000spotify%3aalbum%3a21le?sid=12&amp;amp;flags=0&amp;amp;sn=3&quot; ProgramMetaData=&quot;&amp;lt;DIDL-Lite xmlns:dc=&amp;quot;http://purl.org/dc/elements/1.1/&amp;quot;&amp;gt;&amp;lt;item id=&amp;quot;0&amp;quot;&amp;gt;&amp;lt;dc:title&amp;gt;Wake&amp;lt;/dc:title&amp;gt;&amp;lt;/item&amp;gt;&amp;lt;/DIDL-Lite&amp;gt;&quot; PlayMode=&quot;NORMAL&quot; Volume=&quot;18&quot; IncludeLinkedZones=&quot;0&quot;/&gt;&lt;Alarm ID=&quot;113&quot; StartTime=&quot;07:00:00&quot; Duration=&quot;02:00:00&quot; Recurrence=&quot;WEEKDAYS&quot; Enabled=&quot;1&quot; RoomUUID=&quot;RINCON_KITCHEN&quot; ProgramURI=&quot;x-rincon-buzzer:0&quot; ProgramMetaData=&quot;&quot; PlayMode=&quot;NORMAL&quot; Volume=&quot;25&quot; IncludeLinkedZones=&quot;0&quot;/&gt;&lt;/Alarms&gt;</CurrentAlarmList>
+                </u:ListAlarmsResponse>
+              </s:Body>
+            </s:Envelope>
+        """.trimIndent()
+        val root = Xml.parse(envelope).rootElement()
+        val current = root.descendants("CurrentAlarmList").first()
+        val xml = Xml.soapValue(current)
+        val alarms = AlarmListParser.parse(xml)
+        assertEquals(2, alarms.size)
+        assertEquals("64", alarms[0].id)
+        assertEquals("06:00:00", alarms[0].startTime)
+        assertEquals(true, alarms[0].programUri.contains("sid=12&flags=0&sn=3"))
+        assertEquals("113", alarms[1].id)
+        assertEquals("WEEKDAYS", alarms[1].recurrence)
+    }
 }
 
 class AlarmRecurrenceTest {

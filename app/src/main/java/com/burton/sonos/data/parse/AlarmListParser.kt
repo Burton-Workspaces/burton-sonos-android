@@ -5,16 +5,20 @@ import com.burton.sonos.domain.Alarm
 object AlarmListParser {
     fun parse(escapedOrRawXml: String): List<Alarm> {
         if (escapedOrRawXml.isBlank()) return emptyList()
-        val xml = if (escapedOrRawXml.contains("<Alarm")) {
-            Xml.unescapeXml(escapedOrRawXml).let { unescaped ->
-                if (unescaped.contains("<Alarm")) unescaped else escapedOrRawXml
-            }
-        } else {
-            Xml.unescapeXml(escapedOrRawXml)
-        }
+        val unescaped = Xml.unescapeXml(escapedOrRawXml)
+        // SOAP textContent already unescapes CurrentAlarmList once. Unescaping again
+        // turns ProgramURI `&amp;` and DIDL ProgramMetaData into invalid XML and
+        // drops the whole household list. Try the raw payload first.
+        return listOf(escapedOrRawXml, unescaped)
+            .distinct()
+            .firstNotNullOfOrNull { candidate -> parseDocument(candidate).takeIf { it.isNotEmpty() } }
+            .orEmpty()
+    }
+
+    private fun parseDocument(raw: String): List<Alarm> {
         val wrapped = when {
-            xml.contains("<Alarms") || xml.contains("<CurrentAlarmList") || xml.contains("<Alarm") ->
-                if (xml.contains("<Alarms") || xml.contains("<CurrentAlarmList")) xml else "<Alarms>$xml</Alarms>"
+            raw.contains("<Alarms") || raw.contains("<CurrentAlarmList") || raw.contains("<Alarm") ->
+                if (raw.contains("<Alarms") || raw.contains("<CurrentAlarmList")) raw else "<Alarms>$raw</Alarms>"
             else -> return emptyList()
         }
         val root = runCatching { Xml.parse(wrapped).rootElement() }.getOrNull() ?: return emptyList()
