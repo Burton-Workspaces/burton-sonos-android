@@ -142,6 +142,43 @@ class AlarmListParserTest {
         assertEquals("06:30:00", alarms[0].startTime)
         assertEquals("Daily", alarms[0].displayRecurrence())
     }
+
+    @Test
+    fun parsesNestedCurrentAlarmListWithoutTextNodes() {
+        val xml = """
+            <CurrentAlarmList>
+              <Alarms>
+                <Alarm ID="12" StartTime="06:45:00" Duration="02:00:00" Recurrence="WEEKDAYS" Enabled="1"
+                  RoomUUID="RINCON_AAA" ProgramURI="x-rincon-buzzer:0" ProgramMetaData=""
+                  PlayMode="NORMAL" Volume="18" IncludeLinkedZones="0"/>
+              </Alarms>
+            </CurrentAlarmList>
+        """.trimIndent()
+        val alarms = AlarmListParser.parse(xml)
+        assertEquals(1, alarms.size)
+        assertEquals("12", alarms[0].id)
+        assertEquals("06:45:00", alarms[0].startTime)
+        assertEquals(18, alarms[0].volume)
+    }
+
+    @Test
+    fun parsesSerializedNestedAlarmList() {
+        val xml = """
+            <CurrentAlarmList>
+              <Alarms>
+                <Alarm ID="3" StartTime="08:00:00" Recurrence="DAILY" Enabled="1"
+                  RoomUUID="RINCON_X" ProgramURI="x-rincon-buzzer:0" Volume="12" IncludeLinkedZones="0"/>
+              </Alarms>
+            </CurrentAlarmList>
+        """.trimIndent()
+        val root = Xml.parse(xml).rootElement()
+        assertEquals(true, root.textContent.isBlank())
+        val serialized = Xml.soapValue(root)
+        val alarms = AlarmListParser.parse(serialized)
+        assertEquals(1, alarms.size)
+        assertEquals("3", alarms[0].id)
+        assertEquals("08:00:00", alarms[0].startTime)
+    }
 }
 
 class AlarmRecurrenceTest {

@@ -41,6 +41,38 @@ internal object Xml {
                 }
             }
         }
+
+    fun soapValue(el: Element): String {
+        val nested = el.children()
+        return if (nested.isNotEmpty()) serialize(el) else el.textContent
+    }
+
+    fun serialize(el: Element): String = buildString { appendElement(el) }
+
+    private fun StringBuilder.appendElement(el: Element) {
+        val name = el.localName ?: el.nodeName.substringAfter(':')
+        append('<').append(name)
+        val attrs = el.attributes
+        for (index in 0 until attrs.length) {
+            val attr = attrs.item(index) ?: continue
+            val attrName = attr.localName ?: attr.nodeName
+            if (attrName.startsWith("xmlns")) continue
+            append(' ').append(attrName).append("=\"").append(escapeXml(attr.nodeValue.orEmpty())).append('"')
+        }
+        val nested = el.children()
+        if (nested.isEmpty()) {
+            val text = el.textContent
+            if (text.isBlank()) {
+                append("/>")
+            } else {
+                append('>').append(escapeXml(text)).append("</").append(name).append('>')
+            }
+        } else {
+            append('>')
+            nested.forEach { appendElement(it) }
+            append("</").append(name).append('>')
+        }
+    }
 }
 
 internal fun Element.children(): List<Element> {

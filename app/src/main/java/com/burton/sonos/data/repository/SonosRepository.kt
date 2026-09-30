@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -192,13 +193,16 @@ class SonosRepository @Inject constructor(
         household.players.firstOrNull()?.ip?.let { prefs.setLastSpeakerIp(it) }
 
         val remaining = household.groups.filterNot { it.id == selected?.id }
-        val rest = remaining.associate { group ->
-            val coordinator = household.coordinator(group) ?: return@associate group.id to null
-            group.id to runCatching { control.nowPlaying(group, coordinator) }.getOrNull()
-        }.filterValues { it != null }.mapValues { it.value as NowPlaying }
-        val alarms = household.players.firstOrNull()?.let { player ->
-            runCatching { control.listAlarms(player) }.getOrNull()
-        }.orEmpty()
+        val (rest, alarms) = coroutineScope {
+            val playbackDeferred = async {
+                remaining.associate { group ->
+                    val coordinator = household.coordinator(group) ?: return@associate group.id to null
+                    group.id to runCatching { control.nowPlaying(group, coordinator) }.getOrNull()
+                }.filterValues { it != null }.mapValues { it.value as NowPlaying }
+            }
+            val alarmsDeferred = async { loadAlarms(household) }
+            playbackDeferred.await() to alarmsDeferred.await()
+        }
         _state.update { snapshot ->
             snapshot.copy(
                 nowPlaying = keepLocalVolume(
@@ -209,6 +213,7 @@ class SonosRepository @Inject constructor(
                 alarms = alarms,
             )
         }
+        importLiveNamedGroups(household)
     }
 
     fun selectGroup(groupId: String) {
@@ -412,9 +417,50 @@ class SonosRepository @Inject constructor(
     }
 
     private fun contentPlayer(): Player? =
-        _state.value.selectedCoordinator ?: _state.value.household?.players?.firstOrNull()
+        _state.value.selectedCoordinator ?: _state.value.household?.visiblePlayers?.firstOrNull()
+            ?: _state.value.household?.players?.firstOrNull()
 
-    private fun alarmSpeaker(): Player? = _state.value.household?.players?.firstOrNull()
+    private fun alarmSpeaker(): Player? = alarmSpeaker(_state.value.household)
+
+    private fun alarmSpeaker(household: Household?): Player? {
+        household ?: return null
+        return household.visiblePlayers.firstOrNull()
+            ?: household.players.firstOrNull { !it.invisible }
+            ?: household.players.firstOrNull()
+    }
+
+    private suspend fun loadAlarms(household: Household): List<Alarm> {
+        val tried = LinkedHashSet<String>()
+        val candidates = buildList {
+            household.groups.mapNotNull { household.coordinator(it) }.forEach { add(it) }
+            alarmSpeaker(household)?.let { add(it) }
+            household.visiblePlayers.forEach { add(it) }
+        }
+        for (player in candidates) {
+            if (!tried.add(player.uuid)) continue
+            val loaded = runCatching { control.listAlarms(player) }
+            if (loaded.isSuccess) return loaded.getOrDefault(emptyList())
+        }
+        return emptyList()
+    }
+
+    private suspend fun importLiveNamedGroups(household: Household) {
+        val live = household.groups.mapNotNull { group ->
+            val members = household.visibleMembers(group)
+            if (members.size < 2) return@mapNotNull null
+            NamedGroup(
+                id = "live-" + members.map { it.uuid }.sorted().joinToString("-"),
+                name = household.groupName(group),
+                memberUuids = members.map { it.uuid },
+            )
+        }
+        if (live.isEmpty()) return
+        val current = namedGroups.first()
+        val existing = current.map { it.memberUuids.toSet() }.toSet()
+        val extra = live.filter { it.memberUuids.toSet() !in existing }
+        if (extra.isEmpty()) return
+        prefs.updateNamedGroups { it + extra }
+    }
 
     suspend fun saveAlarm(alarm: Alarm) {
         val player = alarmSpeaker() ?: return

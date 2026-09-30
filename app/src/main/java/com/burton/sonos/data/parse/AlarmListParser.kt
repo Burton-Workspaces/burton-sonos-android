@@ -13,8 +13,8 @@ object AlarmListParser {
             Xml.unescapeXml(escapedOrRawXml)
         }
         val wrapped = when {
-            xml.contains("<Alarms") -> xml
-            xml.contains("<Alarm") -> "<Alarms>$xml</Alarms>"
+            xml.contains("<Alarms") || xml.contains("<CurrentAlarmList") || xml.contains("<Alarm") ->
+                if (xml.contains("<Alarms") || xml.contains("<CurrentAlarmList")) xml else "<Alarms>$xml</Alarms>"
             else -> return emptyList()
         }
         val root = runCatching { Xml.parse(wrapped).rootElement() }.getOrNull() ?: return emptyList()
@@ -22,7 +22,7 @@ object AlarmListParser {
             val id = el.getAttribute("ID").ifBlank { return@mapNotNull null }
             Alarm(
                 id = id,
-                startTime = el.getAttribute("StartTime").ifBlank { "07:00:00" },
+                startTime = el.getAttribute("StartTime").ifBlank { el.getAttribute("StartLocalTime") }.ifBlank { "07:00:00" },
                 duration = el.getAttribute("Duration").ifBlank { Alarm.DEFAULT_DURATION },
                 recurrence = el.getAttribute("Recurrence").ifBlank { "DAILY" },
                 enabled = el.getAttribute("Enabled") == "1",

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.burton.sonos.data.repository.SonosRepository
 import com.burton.sonos.domain.NamedGroup
+import com.burton.sonos.domain.ZoneGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,12 +26,49 @@ class NamedGroupsViewModel @Inject constructor(
     private val repository: SonosRepository,
 ) : ViewModel() {
     val snapshot = repository.state
-    val groups = repository.namedGroups.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val groups = repository.namedGroups.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        emptyList(),
+    )
     private val _ui = MutableStateFlow(NamedGroupsUi())
     val ui = _ui.asStateFlow()
 
     init {
         repository.start()
+    }
+
+    fun selectLive(groupId: String) {
+        repository.selectGroup(groupId)
+    }
+
+    fun saveLive(group: ZoneGroup) {
+        val household = repository.state.value.household ?: return
+        val members = household.visibleMembers(group)
+        if (members.isEmpty()) return
+        val saved = NamedGroup(
+            id = UUID.randomUUID().toString(),
+            name = household.groupName(group),
+            memberUuids = members.map { it.uuid },
+        )
+        viewModelScope.launch {
+            repository.updateNamedGroups { current ->
+                if (current.any { it.memberUuids.toSet() == saved.memberUuids.toSet() }) current
+                else current + saved
+            }
+            _ui.update { it.copy(notice = "Saved ${saved.name}") }
+        }
+    }
+
+    fun ungroupLive(group: ZoneGroup) {
+        viewModelScope.launch {
+            _ui.update { it.copy(applying = true, notice = null) }
+            runCatching { repository.ungroupAll(group.coordinatorUuid) }
+                .onSuccess { _ui.update { it.copy(applying = false, notice = "Ungrouped") } }
+                .onFailure { error ->
+                    _ui.update { it.copy(applying = false, notice = error.message ?: "Couldn't ungroup.") }
+                }
+        }
     }
 
     fun create() {

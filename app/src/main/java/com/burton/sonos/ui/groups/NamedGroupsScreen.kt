@@ -144,7 +144,7 @@ fun NamedGroupsScreen(
                 }
             }
             Text(
-                "Named sets you can form later. Live speaker grouping lives on Now Playing.",
+                "Current rooms on this system, plus named sets you can form later.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = BurtonMute,
             )
@@ -153,17 +153,54 @@ fun NamedGroupsScreen(
                 Text(it, color = BurtonSand, style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(16.dp))
+            val liveGroups = household?.groups.orEmpty()
+            val liveMemberSets = liveGroups.map { group ->
+                household?.visibleMembers(group)?.map { it.uuid }?.toSet().orEmpty()
+            }.toSet()
+            val saved = groups.filterNot { named ->
+                named.id.startsWith("live-") && named.memberUuids.toSet() in liveMemberSets
+            }
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f),
             ) {
-                if (groups.isEmpty()) {
+                if (household == null) {
                     item {
-                        Text("Create a named group, pick speakers, then form it when you want that set playing together.", color = BurtonMute)
+                        Text("Waiting for speakers on this network.", color = BurtonMute)
+                    }
+                } else {
+                    item {
+                        Text("ON THIS SYSTEM", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
+                    }
+                    items(liveGroups, key = { it.id }) { group ->
+                        val members = household.visibleMembers(group)
+                        val savedAlready = groups.any { it.memberUuids.toSet() == members.map { player -> player.uuid }.toSet() }
+                        LiveGroupCard(
+                            name = household.groupName(group),
+                            subtitle = members.joinToString { it.name }.ifBlank { "Room" },
+                            grouped = household.isGrouped(group),
+                            selected = group.id == snapshot.selectedGroupId,
+                            applying = ui.applying,
+                            onSelect = { viewModel.selectLive(group.id) },
+                            onSave = { viewModel.saveLive(group) }.takeIf { !savedAlready && members.size > 1 },
+                            onUngroup = { viewModel.ungroupLive(group) }.takeIf { household.isGrouped(group) },
+                        )
                     }
                 }
-                items(groups, key = { it.id }) { group ->
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Text("SAVED GROUPS", style = MaterialTheme.typography.labelSmall, color = BurtonSand)
+                }
+                if (saved.isEmpty()) {
+                    item {
+                        Text(
+                            "Save a current group, or create a named set to form later.",
+                            color = BurtonMute,
+                        )
+                    }
+                }
+                items(saved, key = { it.id }) { group ->
                     NamedGroupCard(
                         group = group,
                         subtitle = household?.visiblePlayers
@@ -175,6 +212,50 @@ fun NamedGroupsScreen(
                         onOpen = { viewModel.edit(group) },
                         onForm = { viewModel.apply(group) },
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveGroupCard(
+    name: String,
+    subtitle: String,
+    grouped: Boolean,
+    selected: Boolean,
+    applying: Boolean,
+    onSelect: () -> Unit,
+    onSave: (() -> Unit)?,
+    onUngroup: (() -> Unit)?,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BurtonCharcoal, RoundedCornerShape(18.dp))
+            .clickable(onClick = onSelect)
+            .padding(16.dp),
+    ) {
+        Text(name, style = MaterialTheme.typography.titleLarge, color = BurtonIvory, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            listOfNotNull(
+                subtitle,
+                if (grouped) "Grouped" else null,
+                if (selected) "Selected" else null,
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = BurtonMute,
+        )
+        Row {
+            if (onSave != null) {
+                TextButton(onClick = onSave, enabled = !applying) {
+                    Text("Save group", color = BurtonSand)
+                }
+            }
+            if (onUngroup != null) {
+                TextButton(onClick = onUngroup, enabled = !applying) {
+                    Text("Ungroup", color = BurtonSand)
                 }
             }
         }

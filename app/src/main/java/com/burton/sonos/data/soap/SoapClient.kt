@@ -87,7 +87,7 @@ class SoapClient @Inject constructor(
             ?: return emptyMap()
         return response.children().associate { child ->
             val name = child.localName ?: child.nodeName.substringAfter(':')
-            name to child.textContent
+            name to Xml.soapValue(child)
         }
     }
 

@@ -169,7 +169,7 @@ private fun BurtonApp() {
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     val previous = navController.previousBackStackEntry?.destination?.route
-    val tabs = listOf(Routes.ROOMS, Routes.GROUPS, Routes.SOURCES, Routes.SEARCH, Routes.ALARMS)
+    val tabs = listOf(Routes.ROOMS, Routes.SOURCES, Routes.SEARCH, Routes.GROUPS, Routes.ALARMS)
     val selectedTab = when {
         route in tabs -> route
         route?.startsWith("alarm") == true -> Routes.ALARMS
@@ -201,15 +201,17 @@ private fun BurtonApp() {
                     .background(BurtonBlack)
                     .navigationBarsPadding(),
             ) {
-                NowPlayingBar(
-                    snapshot = snapshot,
-                    onToggle = roomsViewModel::toggle,
-                    onOpen = {
-                        snapshot.selectedGroupId?.let {
-                            navController.navigate(Routes.room(it))
-                        }
-                    },
-                )
+                if (!nowPlayingOpen) {
+                    NowPlayingBar(
+                        snapshot = snapshot,
+                        onToggle = roomsViewModel::toggle,
+                        onOpen = {
+                            snapshot.selectedGroupId?.let {
+                                navController.navigate(Routes.room(it))
+                            }
+                        },
+                    )
+                }
                 NavigationBar(containerColor = BurtonBlack, contentColor = BurtonIvory) {
                     NavigationBarItem(
                         selected = selectedTab == Routes.ROOMS,
@@ -217,13 +219,6 @@ private fun BurtonApp() {
                         icon = { Icon(Icons.Rounded.Home, contentDescription = "System") },
                         label = { Text("System") },
                         colors = navColors(selectedTab == Routes.ROOMS),
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.GROUPS,
-                        onClick = { navController.goTab(Routes.GROUPS) },
-                        icon = { Icon(Icons.Rounded.SpeakerGroup, contentDescription = "Groups") },
-                        label = { Text("Groups") },
-                        colors = navColors(selectedTab == Routes.GROUPS),
                     )
                     NavigationBarItem(
                         selected = selectedTab == Routes.SOURCES,
@@ -238,6 +233,13 @@ private fun BurtonApp() {
                         icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
                         label = { Text("Search") },
                         colors = navColors(selectedTab == Routes.SEARCH),
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == Routes.GROUPS,
+                        onClick = { navController.goTab(Routes.GROUPS) },
+                        icon = { Icon(Icons.Rounded.SpeakerGroup, contentDescription = "Groups") },
+                        label = { Text("Groups") },
+                        colors = navColors(selectedTab == Routes.GROUPS),
                     )
                     NavigationBarItem(
                         selected = selectedTab == Routes.ALARMS,
