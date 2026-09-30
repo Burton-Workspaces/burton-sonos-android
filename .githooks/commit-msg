@@ -1,0 +1,4 @@
+#!/bin/sh
+# Reject commits whose subject is not a Conventional Commit.
+ROOT="$(git rev-parse --show-toplevel)"
+exec "$ROOT/scripts/conventional-commit.sh" --file "$1"

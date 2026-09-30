@@ -30,6 +30,7 @@ First launch hydrates the last household from local cache and returns as soon as
 | [Architecture](docs/architecture.md) | Packages, discovery, SOAP, caching, polling |
 | [Development](docs/development.md) | Build, run, test, project layout |
 | [Releases](docs/releases.md) | SemVer, signing, CI, GitHub Releases |
+| [Contributing](CONTRIBUTING.md) | Conventional Commits (required) |
 
 ## Quick start (debug)
 

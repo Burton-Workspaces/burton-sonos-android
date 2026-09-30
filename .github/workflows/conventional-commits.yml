@@ -1,0 +1,38 @@
+name: Conventional commits
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Self-test
+        run: ./scripts/test-conventional-commit.sh
+      - name: Check pull request title
+        if: github.event_name == 'pull_request'
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: ./scripts/conventional-commit.sh --subject "$TITLE"
+      - name: Check pull request commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/conventional-commit.sh --range "$BASE" "$HEAD"
+      - name: Check pushed commits
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: ./scripts/conventional-commit.sh --range "$BEFORE" "$SHA"

@@ -46,3 +46,11 @@ If rooms never appear: confirm `NEARBY_WIFI_DEVICES` / location, multicast not b
 ## Versioning while developing
 
 Do not hand-edit `CHANGELOG.md` or `version.txt` on feature branches. Those are owned by [release-please](releases.md) from Conventional Commits on `master`.
+
+Commit subjects must follow Conventional Commits. Install the hook once:
+
+```bash
+./scripts/install-git-hooks.sh
+```
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md).

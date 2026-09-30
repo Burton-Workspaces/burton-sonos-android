@@ -10,7 +10,7 @@ Tags look like `v1.1.0` (`include-v-in-tag` in `release-please-config.json`).
 
 ## Conventional Commits
 
-Merges to `master` should use [Conventional Commits](https://www.conventionalcommits.org/) so release-please can open a release PR:
+Merges to `master` **must** use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). CI rejects other subjects (and pull request titles). Install the local hook with `./scripts/install-git-hooks.sh`. Details: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 | Prefix | Effect |
 | --- | --- |
@@ -26,6 +26,7 @@ The release PR updates `version.txt`, `CHANGELOG.md`, and `.release-please-manif
 | Workflow | When | What |
 | --- | --- | --- |
 | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | PR and push to `master` | `testDebugUnitTest` |
+| [`.github/workflows/conventional-commits.yml`](../.github/workflows/conventional-commits.yml) | PR (including title edits) and push to `master` | Conventional Commit subjects |
 | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | push to `master` | release-please; if a release was created, pack APK |
 | [`.github/workflows/release-assets.yml`](../.github/workflows/release-assets.yml) | tag `v*.*.*`, workflow_call, or `workflow_dispatch` | test, signed `assembleRelease`, upload `burton-sonos-<version>.apk` |
 
