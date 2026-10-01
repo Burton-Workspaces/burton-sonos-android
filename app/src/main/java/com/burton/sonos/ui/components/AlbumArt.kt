@@ -8,15 +8,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonMute
+
+val LocalGrayscaleAlbumArt = compositionLocalOf { false }
 
 @Composable
 fun AlbumArt(
@@ -26,6 +32,10 @@ fun AlbumArt(
     corner: Dp = 10.dp,
 ) {
     val shape = RoundedCornerShape(corner)
+    val grayscale = LocalGrayscaleAlbumArt.current
+    val grayscaleFilter = remember {
+        ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+    }
     if (url.isNullOrBlank()) {
         Box(
             modifier = modifier
@@ -45,6 +55,7 @@ fun AlbumArt(
             model = url,
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            colorFilter = if (grayscale) grayscaleFilter else null,
             modifier = modifier
                 .size(size)
                 .clip(shape)

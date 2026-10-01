@@ -35,6 +35,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,12 +56,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.burton.sonos.ui.browse.BrowseScreen
+import com.burton.sonos.ui.components.LocalGrayscaleAlbumArt
 import com.burton.sonos.ui.components.NowPlayingBar
 import com.burton.sonos.ui.group.SpeakerGroupingSheet
 import com.burton.sonos.ui.navigation.Routes
 import com.burton.sonos.ui.room.RoomDetailScreen
 import com.burton.sonos.ui.rooms.RoomsScreen
 import com.burton.sonos.ui.rooms.RoomsViewModel
+import com.burton.sonos.ui.settings.SettingsViewModel
 import com.burton.sonos.ui.search.SearchScreen
 import com.burton.sonos.ui.sources.SourcesScreen
 import com.burton.sonos.ui.theme.BurtonBlack
@@ -174,6 +177,8 @@ private fun BurtonApp() {
     var grouping by remember { mutableStateOf(false) }
     val activity = LocalContext.current as? MainActivity
     val nowPlayingOpen = route == Routes.ROOM
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val grayscaleAlbumArt by settingsViewModel.grayscaleAlbumArt.collectAsStateWithLifecycle()
     DisposableEffect(activity, nowPlayingOpen) {
         if (activity == null || !nowPlayingOpen) {
             return@DisposableEffect onDispose { }
@@ -184,103 +189,105 @@ private fun BurtonApp() {
         }
         onDispose { activity.volumeDeltaHandler = null }
     }
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BurtonBlack),
-        containerColor = BurtonBlack,
-        bottomBar = {
-            Column(
-                modifier = Modifier
-                    .background(BurtonBlack)
-                    .navigationBarsPadding(),
+    CompositionLocalProvider(LocalGrayscaleAlbumArt provides grayscaleAlbumArt) {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BurtonBlack),
+            containerColor = BurtonBlack,
+            bottomBar = {
+                Column(
+                    modifier = Modifier
+                        .background(BurtonBlack)
+                        .navigationBarsPadding(),
+                ) {
+                    if (!nowPlayingOpen) {
+                        NowPlayingBar(
+                            snapshot = snapshot,
+                            onToggle = roomsViewModel::toggle,
+                            onOpen = {
+                                snapshot.selectedGroupId?.let {
+                                    navController.navigate(Routes.room(it))
+                                }
+                            },
+                        )
+                    }
+                    NavigationBar(containerColor = BurtonBlack, contentColor = BurtonIvory) {
+                        NavigationBarItem(
+                            selected = selectedTab == Routes.ROOMS,
+                            onClick = { navController.goTab(Routes.ROOMS) },
+                            icon = { Icon(Icons.Rounded.Home, contentDescription = "System") },
+                            label = { Text("System") },
+                            colors = navColors(selectedTab == Routes.ROOMS),
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == Routes.SOURCES,
+                            onClick = { navController.goTab(Routes.SOURCES) },
+                            icon = { Icon(Icons.Rounded.LibraryMusic, contentDescription = "Sources") },
+                            label = { Text("Sources") },
+                            colors = navColors(selectedTab == Routes.SOURCES),
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == Routes.SEARCH,
+                            onClick = { navController.goTab(Routes.SEARCH) },
+                            icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+                            label = { Text("Search") },
+                            colors = navColors(selectedTab == Routes.SEARCH),
+                        )
+                    }
+                }
+            },
+        ) { padding ->
+            NavHost(
+                navController = navController,
+                startDestination = Routes.ROOMS,
+                modifier = Modifier.padding(padding),
             ) {
-                if (!nowPlayingOpen) {
-                    NowPlayingBar(
-                        snapshot = snapshot,
-                        onToggle = roomsViewModel::toggle,
-                        onOpen = {
-                            snapshot.selectedGroupId?.let {
-                                navController.navigate(Routes.room(it))
-                            }
+                composable(Routes.ROOMS) {
+                    RoomsScreen(
+                        onOpenRoom = { navController.navigate(Routes.room(it)) },
+                        onOpenGrouping = { id ->
+                            roomsViewModel.select(id)
+                            grouping = true
                         },
                     )
                 }
-                NavigationBar(containerColor = BurtonBlack, contentColor = BurtonIvory) {
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.ROOMS,
-                        onClick = { navController.goTab(Routes.ROOMS) },
-                        icon = { Icon(Icons.Rounded.Home, contentDescription = "System") },
-                        label = { Text("System") },
-                        colors = navColors(selectedTab == Routes.ROOMS),
+                composable(
+                    Routes.ROOM,
+                    arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+                ) {
+                    RoomDetailScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenGrouping = { grouping = true },
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.SOURCES,
-                        onClick = { navController.goTab(Routes.SOURCES) },
-                        icon = { Icon(Icons.Rounded.LibraryMusic, contentDescription = "Sources") },
-                        label = { Text("Sources") },
-                        colors = navColors(selectedTab == Routes.SOURCES),
+                }
+                composable(Routes.SOURCES) {
+                    SourcesScreen(
+                        onBrowse = { id, title -> navController.navigate(Routes.browse(id, title)) },
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == Routes.SEARCH,
-                        onClick = { navController.goTab(Routes.SEARCH) },
-                        icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
-                        label = { Text("Search") },
-                        colors = navColors(selectedTab == Routes.SEARCH),
+                }
+                composable(Routes.SEARCH) {
+                    SearchScreen(
+                        onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
+                    )
+                }
+                composable(
+                    Routes.BROWSE,
+                    arguments = listOf(
+                        navArgument("objectId") { type = NavType.StringType },
+                        navArgument("title") { type = NavType.StringType; defaultValue = "Browse" },
+                    ),
+                ) {
+                    BrowseScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
                     )
                 }
             }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.ROOMS,
-            modifier = Modifier.padding(padding),
-        ) {
-            composable(Routes.ROOMS) {
-                RoomsScreen(
-                    onOpenRoom = { navController.navigate(Routes.room(it)) },
-                    onOpenGrouping = { id ->
-                        roomsViewModel.select(id)
-                        grouping = true
-                    },
-                )
-            }
-            composable(
-                Routes.ROOM,
-                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
-            ) {
-                RoomDetailScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenGrouping = { grouping = true },
-                )
-            }
-            composable(Routes.SOURCES) {
-                SourcesScreen(
-                    onBrowse = { id, title -> navController.navigate(Routes.browse(id, title)) },
-                )
-            }
-            composable(Routes.SEARCH) {
-                SearchScreen(
-                    onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
-                )
-            }
-            composable(
-                Routes.BROWSE,
-                arguments = listOf(
-                    navArgument("objectId") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType; defaultValue = "Browse" },
-                ),
-            ) {
-                BrowseScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
-                )
-            }
         }
-    }
-    if (grouping) {
-        SpeakerGroupingSheet(onDismiss = { grouping = false })
+        if (grouping) {
+            SpeakerGroupingSheet(onDismiss = { grouping = false })
+        }
     }
 }
 

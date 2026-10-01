@@ -15,6 +15,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,8 +35,10 @@ import com.burton.sonos.ui.components.FullScreenModal
 import com.burton.sonos.ui.groups.NamedGroupsScreen
 import com.burton.sonos.ui.groups.NamedGroupsViewModel
 import com.burton.sonos.ui.theme.BurtonCharcoal
+import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
+import com.burton.sonos.ui.theme.BurtonSand
 
 private enum class SettingsPage { Root, Groups, Alarms }
 
@@ -43,10 +47,12 @@ fun SettingsModal(
     onDismiss: () -> Unit,
     groupsViewModel: NamedGroupsViewModel = hiltViewModel(),
     alarmsViewModel: AlarmsViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var page by remember { mutableStateOf(SettingsPage.Root) }
     val snapshot by alarmsViewModel.state.collectAsStateWithLifecycle()
     val namedGroups by groupsViewModel.groups.collectAsStateWithLifecycle()
+    val grayscaleAlbumArt by settingsViewModel.grayscaleAlbumArt.collectAsStateWithLifecycle()
     val household = snapshot.household
     val groupCount = snapshot.areas.size + namedGroups.count { named ->
         !named.id.startsWith("live-") && named.id !in snapshot.areas.map { it.id }
@@ -94,6 +100,13 @@ fun SettingsModal(
                     onClick = { page = SettingsPage.Alarms },
                 )
                 Spacer(Modifier.height(10.dp))
+                SettingsToggle(
+                    title = "Grayscale album art",
+                    subtitle = "Show covers in black and white",
+                    checked = grayscaleAlbumArt,
+                    onCheckedChange = settingsViewModel::setGrayscaleAlbumArt,
+                )
+                Spacer(Modifier.height(10.dp))
                 SettingsRow(
                     title = "Burton Sonos",
                     subtitle = "About",
@@ -135,5 +148,38 @@ private fun SettingsRow(
                 tint = BurtonMute,
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsToggle(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BurtonCharcoal, RoundedCornerShape(18.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = BurtonIvory)
+            Spacer(Modifier.height(4.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = BurtonMute)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = BurtonIvory,
+                checkedTrackColor = BurtonSand,
+                uncheckedThumbColor = BurtonMute,
+                uncheckedTrackColor = BurtonElevated,
+            ),
+        )
     }
 }

@@ -3,6 +3,7 @@ package com.burton.sonos.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -27,6 +28,7 @@ class LocalPrefs @Inject constructor(
     val namedGroups: Flow<List<NamedGroup>> = store.data.map { prefs ->
         NamedGroupCache.decode(prefs[NAMED_GROUPS].orEmpty())
     }
+    val grayscaleAlbumArt: Flow<Boolean> = store.data.map { it[GRAYSCALE_ALBUM_ART] ?: false }
 
     suspend fun selectedGroup(): String? = selectedGroupId.first()
 
@@ -58,10 +60,15 @@ class LocalPrefs @Inject constructor(
         }
     }
 
+    suspend fun setGrayscaleAlbumArt(enabled: Boolean) {
+        store.edit { it[GRAYSCALE_ALBUM_ART] = enabled }
+    }
+
     private companion object {
         val SELECTED_GROUP = stringPreferencesKey("selected_group")
         val LAST_SPEAKER_IP = stringPreferencesKey("last_speaker_ip")
         val CACHED_HOUSEHOLD = stringPreferencesKey("cached_household")
         val NAMED_GROUPS = stringPreferencesKey("named_groups")
+        val GRAYSCALE_ALBUM_ART = booleanPreferencesKey("grayscale_album_art")
     }
 }
