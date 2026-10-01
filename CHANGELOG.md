@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.7.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.6.0...v1.7.0) (2026-10-01)
+
+
+### Features
+
+* add grayscale album art option in settings ([ce4f794](https://github.com/Burton-Workspaces/burton-sonos-android/commit/ce4f794c17f3555bc330c68a760bd1a057115687))
+
+
+### Bug Fixes
+
+* **ui:** pin Save on editor screens and match alarm/group chrome ([4228d8b](https://github.com/Burton-Workspaces/burton-sonos-android/commit/4228d8b5811033537082854d207b5d3d620bc681))
+
 ## [1.6.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.5.0...v1.6.0) (2026-09-30)
 
 
