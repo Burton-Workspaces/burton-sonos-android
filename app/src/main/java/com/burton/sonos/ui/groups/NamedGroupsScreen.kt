@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burton.sonos.domain.NamedGroup
+import com.burton.sonos.ui.components.DeleteActionRow
 import com.burton.sonos.ui.components.FullScreenModal
 import com.burton.sonos.ui.theme.BurtonCharcoal
-import com.burton.sonos.ui.theme.BurtonDanger
 import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonLine
@@ -56,7 +56,7 @@ fun NamedGroupsScreen(
         named.id.startsWith("live-") &&
             (named.memberUuids.size < 2 || named.memberUuids.toSet() in liveMemberSets)
     }.filterNot { named -> named.memberUuids.toSet() in areaMemberSets }
-    val saved = snapshot.areas + local
+    val saved = (snapshot.areas + local).filterNot { it.id in ui.hiddenIds }
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(Modifier.height(8.dp))
         Text(
@@ -110,20 +110,14 @@ fun NamedGroupsScreen(
         }
     }
     if (editing != null) {
-        val existing = groups.any { it.id == editing.id }
+        val existing = !ui.isNew
         FullScreenModal(
             onDismiss = viewModel::cancel,
             title = if (existing) "Edit group" else "Add group",
-            actionLabel = if (existing) "Save group" else "Add group",
+            actionLabel = "Save",
             actionEnabled = editing.name.isNotBlank() && editing.memberUuids.isNotEmpty(),
             onAction = viewModel::save,
-            extraFooter = {
-                if (existing) {
-                    TextButton(onClick = viewModel::delete, modifier = Modifier.fillMaxWidth()) {
-                        Text("Delete group", color = BurtonDanger)
-                    }
-                }
-            },
+            showClose = true,
         ) {
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
@@ -164,6 +158,9 @@ fun NamedGroupsScreen(
                         ),
                     )
                 }
+            }
+            if (existing) {
+                DeleteActionRow(label = "Delete group", onClick = viewModel::delete)
             }
             Spacer(Modifier.height(16.dp))
         }

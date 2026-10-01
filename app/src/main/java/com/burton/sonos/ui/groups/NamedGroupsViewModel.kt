@@ -16,8 +16,10 @@ import javax.inject.Inject
 
 data class NamedGroupsUi(
     val editing: NamedGroup? = null,
+    val isNew: Boolean = false,
     val applying: Boolean = false,
     val notice: String? = null,
+    val hiddenIds: Set<String> = emptySet(),
 )
 
 @HiltViewModel
@@ -48,17 +50,18 @@ class NamedGroupsViewModel @Inject constructor(
                     name = "",
                     memberUuids = members,
                 ),
+                isNew = true,
                 notice = null,
             )
         }
     }
 
     fun edit(group: NamedGroup) {
-        _ui.update { it.copy(editing = group, notice = null) }
+        _ui.update { it.copy(editing = group, isNew = false, notice = null) }
     }
 
     fun cancel() {
-        _ui.update { it.copy(editing = null) }
+        _ui.update { it.copy(editing = null, isNew = false) }
     }
 
     fun setName(name: String) {
@@ -92,7 +95,7 @@ class NamedGroupsViewModel @Inject constructor(
                     current + saved
                 }
             }
-            _ui.update { it.copy(editing = null) }
+            _ui.update { it.copy(editing = null, isNew = false) }
         }
     }
 
@@ -100,7 +103,7 @@ class NamedGroupsViewModel @Inject constructor(
         val editing = _ui.value.editing ?: return
         viewModelScope.launch {
             repository.updateNamedGroups { current -> current.filterNot { it.id == editing.id } }
-            _ui.update { it.copy(editing = null) }
+            _ui.update { it.copy(editing = null, isNew = false, hiddenIds = it.hiddenIds + editing.id) }
         }
     }
 

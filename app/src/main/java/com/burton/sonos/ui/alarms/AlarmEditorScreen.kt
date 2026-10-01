@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.burton.sonos.ui.components.DeleteActionRow
 import com.burton.sonos.ui.components.FullScreenModal
 import com.burton.sonos.ui.theme.BurtonCharcoal
 import com.burton.sonos.ui.theme.BurtonDanger
@@ -70,19 +71,10 @@ fun AlarmEditorScreen(
     FullScreenModal(
         onDismiss = onBack,
         title = if (ui.isNew) "Add alarm" else "Edit alarm",
-        actionLabel = if (ui.isNew) "Create alarm" else "Save alarm",
+        actionLabel = "Save",
         actionEnabled = !ui.saving,
         onAction = { viewModel.save(onBack) },
-        extraFooter = {
-            if (!ui.isNew) {
-                TextButton(
-                    onClick = { viewModel.delete(onBack) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Delete alarm", color = BurtonDanger)
-                }
-            }
-        },
+        showClose = true,
     ) {
         Spacer(Modifier.height(20.dp))
         Text("TIME", style = MaterialTheme.typography.labelSmall, color = BurtonMute)
@@ -165,6 +157,9 @@ fun AlarmEditorScreen(
         ui.error?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, color = BurtonDanger, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (!ui.isNew) {
+            DeleteActionRow(label = "Delete alarm", onClick = { viewModel.delete(onBack) })
         }
         Spacer(Modifier.height(16.dp))
     }
