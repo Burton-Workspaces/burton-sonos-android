@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.8.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.7.0...v1.8.0) (2026-10-03)
+
+
+### Features
+
+* file issues by shaking or long-pressing About ([d84542c](https://github.com/Burton-Workspaces/burton-sonos-android/commit/d84542cf52207118c22f2b928617456e4b5bc271))
+
 ## [1.7.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.6.0...v1.7.0) (2026-10-01)
 
 
