@@ -55,6 +55,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.burton.sonos.report.ShakeToReport
 import com.burton.sonos.ui.browse.BrowseScreen
 import com.burton.sonos.ui.components.LocalGrayscaleAlbumArt
 import com.burton.sonos.ui.components.NowPlayingBar
@@ -77,6 +78,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var permitted by mutableStateOf(false)
     var volumeDeltaHandler: ((Int) -> Boolean)? = null
+    private val shakeToReport by lazy { ShakeToReport(this) }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -98,6 +100,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        shakeToReport.start()
+    }
+
+    override fun onPause() {
+        shakeToReport.stop()
+        super.onPause()
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

@@ -1,7 +1,9 @@
 package com.burton.sonos.ui.settings
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,10 +27,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burton.sonos.BuildConfig
+import com.burton.sonos.report.BurtonIssues
 import com.burton.sonos.ui.alarms.AlarmsScreen
 import com.burton.sonos.ui.alarms.AlarmsViewModel
 import com.burton.sonos.ui.components.FullScreenModal
@@ -107,10 +111,12 @@ fun SettingsModal(
                     onCheckedChange = settingsViewModel::setGrayscaleAlbumArt,
                 )
                 Spacer(Modifier.height(10.dp))
+                val context = LocalContext.current
                 SettingsRow(
                     title = "Burton Sonos",
                     subtitle = "About",
                     trailing = BuildConfig.VERSION_NAME,
+                    onLongClick = { BurtonIssues.openNewIssue(context) },
                 )
             }
             SettingsPage.Groups -> NamedGroupsScreen(viewModel = groupsViewModel)
@@ -119,18 +125,29 @@ fun SettingsModal(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SettingsRow(
     title: String,
     subtitle: String,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     trailing: String? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(BurtonCharcoal, RoundedCornerShape(18.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                when {
+                    onClick != null && onLongClick != null -> {
+                        Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                    }
+                    onClick != null -> Modifier.clickable(onClick = onClick)
+                    onLongClick != null -> Modifier.combinedClickable(onClick = {}, onLongClick = onLongClick)
+                    else -> Modifier
+                },
+            )
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

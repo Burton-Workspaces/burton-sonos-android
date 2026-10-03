@@ -60,6 +60,10 @@ Searches the local ContentDirectory (`A:ALBUMARTIST`, `A:ALBUM`, `A:TRACKS`, `A:
 
 Loads `ListAlarms` from a coordinator (household-wide AlarmClock). Existing alarms show time, recurrence, room, and an enable switch. You can add, edit, or delete alarms on the speakers; this is not a local-only reminder list.
 
+### File an issue
+
+Shake the phone, or long-press **About** in Settings. Burton Issues opens on New issue with this app already selected. Nothing is posted until you submit; Back cancels.
+
 ## What is stored on the phone
 
 DataStore (`burton_sonos`):
