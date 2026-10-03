@@ -2,20 +2,30 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <version>" >&2
-  echo "  version  SemVer matching version.txt, with or without a v prefix (1.3.0 or v1.3.0)" >&2
+  echo "Usage: $0 [version]" >&2
+  echo "  version  SemVer matching version.txt, with or without a v prefix (1.0.0 or v1.0.0)" >&2
+  echo "           Defaults to version.txt when omitted." >&2
   exit 1
 }
 
-[[ $# -eq 1 ]] || usage
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+if [[ $# -gt 1 ]]; then
+  usage
+fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-raw="$1"
+if [[ $# -eq 1 ]]; then
+  raw="$1"
+else
+  raw="$(tr -d '[:space:]' < version.txt)"
+fi
 version="${raw#v}"
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Version must be MAJOR.MINOR.PATCH, got '$raw'" >&2
+  echo "Version must be SemVer 2.0 MAJOR.MINOR.PATCH, got '$raw'" >&2
   exit 1
 fi
 tag="v${version}"

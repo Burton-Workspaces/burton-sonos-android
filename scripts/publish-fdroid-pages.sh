@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 [version]" >&2
-  echo "  version  SemVer matching version.txt, with or without a v prefix (1.3.0 or v1.3.0)" >&2
+  echo "  version  SemVer matching version.txt, with or without a v prefix (1.0.0 or v1.0.0)" >&2
   echo "           Defaults to version.txt when omitted." >&2
   echo >&2
   echo "Loads fdroid-pages.env from the repo root if that file exists." >&2
