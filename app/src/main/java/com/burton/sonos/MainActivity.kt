@@ -293,6 +293,7 @@ private fun BurtonApp() {
                     BrowseScreen(
                         onBack = { navController.popBackStack() },
                         onOpenFolder = { id, title -> navController.navigate(Routes.browse(id, title)) },
+                        onOpenGrouping = { grouping = true },
                     )
                 }
             }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,20 +36,39 @@ import com.burton.sonos.ui.theme.BurtonCharcoal
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
+import com.burton.sonos.ui.track.TrackActionsHost
+import com.burton.sonos.ui.track.TrackActionsViewModel
 
 @Composable
 fun BrowseScreen(
     onBack: () -> Unit,
     onOpenFolder: (id: String, title: String) -> Unit,
+    onOpenGrouping: (() -> Unit)? = null,
     viewModel: BrowseViewModel = hiltViewModel(),
+    actionsViewModel: TrackActionsViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = BurtonIvory)
             }
-            Text(ui.title, style = MaterialTheme.typography.headlineMedium, color = BurtonIvory)
+            Text(
+                ui.title,
+                style = MaterialTheme.typography.headlineMedium,
+                color = BurtonIvory,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (viewModel.isQueue && onOpenGrouping != null) {
+                IconButton(onClick = onOpenGrouping) {
+                    Icon(Icons.Rounded.SpeakerGroup, contentDescription = "Group speakers", tint = BurtonSand)
+                }
+            }
         }
         when {
             ui.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -71,11 +91,17 @@ fun BrowseScreen(
                             if (item.isContainer) onOpenFolder(item.id, item.title)
                             else viewModel.play(item)
                         },
+                        onMore = if (item.canPlay) {
+                            { actionsViewModel.open(item) }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
         }
     }
+    TrackActionsHost(viewModel = actionsViewModel)
 }
 
 @Composable

@@ -27,6 +27,7 @@ class BrowseViewModel @Inject constructor(
     private val title: String = savedStateHandle["title"] ?: "Browse"
     private val _ui = MutableStateFlow(BrowseUiState(title = title))
     val ui = _ui.asStateFlow()
+    val isQueue = objectId == "Q:0"
 
     init {
         refresh()

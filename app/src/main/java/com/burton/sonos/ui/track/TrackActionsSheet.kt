@@ -1,7 +1,9 @@
-package com.burton.sonos.ui.search
+package com.burton.sonos.ui.track
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,7 +16,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Queue
-import androidx.compose.material.icons.rounded.QueuePlayNext
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -25,17 +26,49 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.PlayAction
+import com.burton.sonos.ui.components.AlbumArt
 import com.burton.sonos.ui.components.BurtonModalSheet
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonLine
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
+
+@Composable
+fun TrackActionsHost(
+    viewModel: TrackActionsViewModel = hiltViewModel(),
+) {
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val item = ui.item ?: return
+    TrackActionsSheet(
+        item = item,
+        page = ui.page,
+        groupName = ui.groupName,
+        playlists = ui.playlists,
+        playlistsLoading = ui.playlistsLoading,
+        newPlaylistName = ui.newPlaylistName,
+        busy = ui.busy,
+        notice = ui.notice,
+        onDismiss = viewModel::dismiss,
+        onPlayAction = viewModel::runPlayAction,
+        onSaveFavorite = viewModel::saveFavorite,
+        onOpenPlaylists = viewModel::openPlaylists,
+        onBackToActions = viewModel::backToActions,
+        onOpenNewPlaylist = viewModel::openNewPlaylist,
+        onNewPlaylistName = viewModel::onNewPlaylistName,
+        onAddToPlaylist = viewModel::addToPlaylist,
+        onCreatePlaylist = viewModel::createPlaylistAndAdd,
+    )
+}
 
 @Composable
 fun TrackActionsSheet(
@@ -60,15 +93,51 @@ fun TrackActionsSheet(
     BurtonModalSheet(onDismiss = onDismiss) {
         when (page) {
             TrackActionPage.ACTIONS -> {
-                Text(item.title, style = MaterialTheme.typography.headlineMedium, color = BurtonIvory)
-                item.subtitle?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = BurtonMute)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    AlbumArt(url = item.albumArtUrl, size = 72.dp, corner = 12.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            item.title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = BurtonIvory,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        item.subtitle?.takeIf { it.isNotBlank() }?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = BurtonMute,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
-                ActionRow(Icons.Rounded.FavoriteBorder, "Save to favorites", enabled = !busy, onClick = onSaveFavorite)
-                ActionRow(Icons.AutoMirrored.Rounded.PlaylistAdd, "Add to Sonos Playlist", enabled = !busy, onClick = onOpenPlaylists)
-                ActionRow(Icons.Rounded.PlayArrow, "Play Now", enabled = !busy, onClick = { onPlayAction(PlayAction.PLAY_NOW) })
-                ActionRow(Icons.Rounded.QueuePlayNext, "Play Next", enabled = !busy, onClick = { onPlayAction(PlayAction.PLAY_NEXT) })
+                ActionRow(
+                    icon = Icons.Rounded.FavoriteBorder,
+                    title = "Save to Sonos Favorites",
+                    enabled = !busy,
+                    onClick = onSaveFavorite,
+                )
+                ActionRow(
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    title = "Add to Sonos Playlist",
+                    enabled = !busy,
+                    onClick = onOpenPlaylists,
+                )
+                ActionRow(
+                    icon = Icons.Rounded.PlayArrow,
+                    title = "Play Now",
+                    subtitle = groupName,
+                    enabled = !busy,
+                    onClick = { onPlayAction(PlayAction.PLAY_NOW) },
+                )
                 ActionRow(
                     icon = Icons.Rounded.Queue,
                     title = "Add to End of Queue",
@@ -143,7 +212,7 @@ fun TrackActionsSheet(
 
 @Composable
 private fun RowHeader(title: String, onBack: () -> Unit) {
-    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = BurtonIvory)
         }
@@ -159,7 +228,7 @@ private fun ActionRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)

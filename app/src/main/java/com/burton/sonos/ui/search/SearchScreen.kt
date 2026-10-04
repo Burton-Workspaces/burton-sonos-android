@@ -38,11 +38,14 @@ import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonLine
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
+import com.burton.sonos.ui.track.TrackActionsHost
+import com.burton.sonos.ui.track.TrackActionsViewModel
 
 @Composable
 fun SearchScreen(
     onOpenFolder: (id: String, title: String) -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
+    actionsViewModel: TrackActionsViewModel = hiltViewModel(),
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -120,7 +123,7 @@ fun SearchScreen(
                                 else viewModel.play(item)
                             },
                             onMore = if (item.canPlay) {
-                                { viewModel.openActions(item) }
+                                { actionsViewModel.open(item) }
                             } else {
                                 null
                             },
@@ -130,25 +133,5 @@ fun SearchScreen(
             }
         }
     }
-    ui.actionsItem?.let { item ->
-        TrackActionsSheet(
-            item = item,
-            page = ui.actionPage,
-            groupName = ui.groupName,
-            playlists = ui.playlists,
-            playlistsLoading = ui.playlistsLoading,
-            newPlaylistName = ui.newPlaylistName,
-            busy = ui.busy,
-            notice = ui.notice,
-            onDismiss = viewModel::dismissActions,
-            onPlayAction = viewModel::runPlayAction,
-            onSaveFavorite = viewModel::saveFavorite,
-            onOpenPlaylists = viewModel::openPlaylists,
-            onBackToActions = viewModel::backToActions,
-            onOpenNewPlaylist = viewModel::openNewPlaylist,
-            onNewPlaylistName = viewModel::onNewPlaylistName,
-            onAddToPlaylist = viewModel::addToPlaylist,
-            onCreatePlaylist = viewModel::createPlaylistAndAdd,
-        )
-    }
+    TrackActionsHost(viewModel = actionsViewModel)
 }
