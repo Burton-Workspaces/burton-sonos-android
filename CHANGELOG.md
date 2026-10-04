@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.9.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.8.0...v1.9.0) (2026-10-03)
+
+
+### Features
+
+* apply speaker grouping from named area pills ([5de72b5](https://github.com/Burton-Workspaces/burton-sonos-android/commit/5de72b524e1fecc3f9a820c10fa19e340bcfff3c))
+
 ## [1.8.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.7.0...v1.8.0) (2026-10-03)
 
 
