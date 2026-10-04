@@ -2,6 +2,7 @@ package com.burton.sonos.data.repository
 
 import com.burton.sonos.data.discovery.SpeakerDiscovery
 import com.burton.sonos.data.library.LibrarySearch
+import com.burton.sonos.data.library.PrefixLocation
 import com.burton.sonos.domain.Alarm
 import com.burton.sonos.domain.BrowseItem
 import com.burton.sonos.domain.Household
@@ -10,6 +11,7 @@ import com.burton.sonos.domain.NamedGroup
 import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.domain.PlayAction
 import com.burton.sonos.domain.Player
+import com.burton.sonos.domain.QueuePlayMode
 import com.burton.sonos.domain.SystemSource
 import com.burton.sonos.domain.ZoneGroup
 import kotlinx.coroutines.CoroutineScope
@@ -66,6 +68,16 @@ class SonosRepository @Inject constructor(
     val namedGroups = prefs.namedGroups
     private var pollJob: Job? = null
     private val volumeJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    private val _incomingSearch = MutableStateFlow<String?>(null)
+    val incomingSearch = _incomingSearch.asStateFlow()
+
+    fun requestSearch(query: String) {
+        _incomingSearch.value = query
+    }
+
+    fun consumeIncomingSearch() {
+        _incomingSearch.value = null
+    }
 
     fun start() {
         if (pollJob?.isActive == true) return
@@ -166,7 +178,7 @@ class SonosRepository @Inject constructor(
         val selectedPlayback = if (selected != null) {
             val coordinator = household.coordinator(selected)
             if (coordinator != null) {
-                runCatching { control.nowPlaying(selected, coordinator) }.getOrNull()
+                runCatching { control.nowPlaying(selected, coordinator, extras = true) }.getOrNull()
             } else {
                 null
             }
@@ -245,6 +257,45 @@ class SonosRepository @Inject constructor(
         refresh(scan = false)
     }
 
+    suspend fun toggleShuffle() {
+        val playback = _state.value.selectedPlayback ?: return
+        setPlayMode(playback.playMode.toggleShuffle())
+    }
+
+    suspend fun cycleRepeat() {
+        val playback = _state.value.selectedPlayback ?: return
+        setPlayMode(playback.playMode.cycleRepeat())
+    }
+
+    suspend fun setCrossfade(enabled: Boolean) {
+        val coordinator = _state.value.selectedCoordinator ?: return
+        patchSelectedPlayback { it.copy(crossfade = enabled) }
+        control.setCrossfade(coordinator, enabled)
+        refresh(scan = false)
+    }
+
+    suspend fun setSleepTimer(seconds: Int) {
+        val coordinator = _state.value.selectedCoordinator ?: return
+        patchSelectedPlayback { it.copy(sleepRemainingSeconds = seconds.coerceAtLeast(0)) }
+        control.setSleepTimer(coordinator, seconds)
+        refresh(scan = false)
+    }
+
+    private suspend fun setPlayMode(mode: QueuePlayMode) {
+        val coordinator = _state.value.selectedCoordinator ?: return
+        patchSelectedPlayback { it.copy(playMode = mode) }
+        control.setPlayMode(coordinator, mode)
+        refresh(scan = false)
+    }
+
+    private fun patchSelectedPlayback(transform: (NowPlaying) -> NowPlaying) {
+        val groupId = _state.value.selectedGroup?.id ?: _state.value.selectedGroupId ?: return
+        _state.update { snapshot ->
+            val current = snapshot.nowPlaying[groupId] ?: return@update snapshot
+            snapshot.copy(nowPlaying = snapshot.nowPlaying + (groupId to transform(current)))
+        }
+    }
+
     suspend fun setVolume(volume: Int) {
         val groupId = _state.value.selectedGroup?.id ?: _state.value.selectedGroupId ?: return
         applyVolume(groupId, volume)
@@ -293,11 +344,19 @@ class SonosRepository @Inject constructor(
         return control.localSources(household)
     }
 
-    suspend fun browse(objectId: String): List<BrowseItem> {
-        val player = _state.value.selectedCoordinator
-            ?: _state.value.household?.players?.firstOrNull()
-            ?: return emptyList()
-        return control.browse(player, objectId)
+    suspend fun browse(objectId: String, start: Int = 0): List<BrowseItem> {
+        val player = contentPlayer() ?: return emptyList()
+        return control.browse(player, objectId, start = start)
+    }
+
+    suspend fun prefixLocations(objectId: String): List<PrefixLocation> {
+        val player = contentPlayer() ?: return emptyList()
+        return runCatching { control.prefixLocations(player, objectId) }.getOrDefault(emptyList())
+    }
+
+    suspend fun findPrefixIndex(objectId: String, prefix: String): Int? {
+        val player = contentPlayer() ?: return null
+        return runCatching { control.findPrefix(player, objectId, prefix) }.getOrNull()
     }
 
     suspend fun refreshShareIndex() {

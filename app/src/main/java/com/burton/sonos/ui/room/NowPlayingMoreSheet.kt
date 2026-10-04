@@ -1,5 +1,6 @@
-package com.burton.sonos.ui.track
+package com.burton.sonos.ui.room
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,73 +13,48 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Queue
-import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burton.sonos.domain.BrowseItem
-import com.burton.sonos.domain.PlayAction
+import com.burton.sonos.domain.SleepTimer
+import com.burton.sonos.domain.Track
 import com.burton.sonos.ui.components.AlbumArt
 import com.burton.sonos.ui.components.BurtonModalSheet
 import com.burton.sonos.ui.components.SheetActionRow
 import com.burton.sonos.ui.components.SheetRowHeader
+import com.burton.sonos.ui.theme.BurtonElevated
 import com.burton.sonos.ui.theme.BurtonIvory
 import com.burton.sonos.ui.theme.BurtonLine
 import com.burton.sonos.ui.theme.BurtonMute
 import com.burton.sonos.ui.theme.BurtonSand
+import com.burton.sonos.ui.track.TrackActionPage
 
 @Composable
-fun TrackActionsHost(
-    viewModel: TrackActionsViewModel = hiltViewModel(),
-) {
-    val ui by viewModel.ui.collectAsStateWithLifecycle()
-    val item = ui.item ?: return
-    TrackActionsSheet(
-        item = item,
-        page = ui.page,
-        groupName = ui.groupName,
-        playlists = ui.playlists,
-        playlistsLoading = ui.playlistsLoading,
-        newPlaylistName = ui.newPlaylistName,
-        busy = ui.busy,
-        notice = ui.notice,
-        onDismiss = viewModel::dismiss,
-        onPlayAction = viewModel::runPlayAction,
-        onSaveFavorite = viewModel::saveFavorite,
-        onOpenPlaylists = viewModel::openPlaylists,
-        onBackToActions = viewModel::backToActions,
-        onOpenNewPlaylist = viewModel::openNewPlaylist,
-        onNewPlaylistName = viewModel::onNewPlaylistName,
-        onAddToPlaylist = viewModel::addToPlaylist,
-        onCreatePlaylist = viewModel::createPlaylistAndAdd,
-    )
-}
-
-@Composable
-fun TrackActionsSheet(
-    item: BrowseItem,
+fun NowPlayingMoreSheet(
+    track: Track?,
     page: TrackActionPage,
-    groupName: String,
     playlists: List<BrowseItem>,
     playlistsLoading: Boolean,
     newPlaylistName: String,
     busy: Boolean,
     notice: String?,
+    crossfade: Boolean,
+    sleepRemainingSeconds: Int,
     onDismiss: () -> Unit,
-    onPlayAction: (PlayAction) -> Unit,
     onSaveFavorite: () -> Unit,
     onOpenPlaylists: () -> Unit,
     onBackToActions: () -> Unit,
@@ -86,7 +62,12 @@ fun TrackActionsSheet(
     onNewPlaylistName: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
     onCreatePlaylist: () -> Unit,
+    onSearchArtist: () -> Unit,
+    onCrossfade: (Boolean) -> Unit,
+    onSleepTimer: (Int) -> Unit,
 ) {
+    val canSave = track?.uri?.isNotBlank() == true
+    val artist = track?.artist?.trim().orEmpty()
     BurtonModalSheet(onDismiss = onDismiss) {
         when (page) {
             TrackActionPage.ACTIONS -> {
@@ -95,67 +76,95 @@ fun TrackActionsSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    AlbumArt(url = item.albumArtUrl, size = 72.dp, corner = 12.dp)
+                    AlbumArt(url = track?.albumArtUrl, size = 72.dp, corner = 12.dp)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            item.title,
+                            track?.title?.ifBlank { "Nothing playing" } ?: "Nothing playing",
                             style = MaterialTheme.typography.headlineMedium,
                             color = BurtonIvory,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        item.subtitle?.takeIf { it.isNotBlank() }?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = BurtonMute,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            artist.ifBlank { track?.album?.ifBlank { "Unknown artist" } ?: "Unknown artist" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = BurtonMute,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 SheetActionRow(
                     icon = Icons.Rounded.FavoriteBorder,
                     title = "Save to Sonos Favorites",
-                    enabled = !busy,
+                    enabled = canSave && !busy,
                     onClick = onSaveFavorite,
                 )
                 SheetActionRow(
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     title = "Add to Sonos Playlist",
-                    enabled = !busy,
+                    enabled = canSave && !busy,
                     onClick = onOpenPlaylists,
                 )
+                if (artist.isNotBlank()) {
+                    SheetActionRow(
+                        icon = Icons.Rounded.Search,
+                        title = "Search for $artist",
+                        enabled = !busy,
+                        onClick = onSearchArtist,
+                    )
+                }
                 SheetActionRow(
-                    icon = Icons.Rounded.PlayArrow,
-                    title = "Play Now",
-                    subtitle = groupName,
+                    icon = Icons.Rounded.Tune,
+                    title = "Crossfade",
                     enabled = !busy,
-                    onClick = { onPlayAction(PlayAction.PLAY_NOW) },
+                    trailing = {
+                        Switch(
+                            checked = crossfade,
+                            onCheckedChange = onCrossfade,
+                            enabled = !busy,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = BurtonIvory,
+                                checkedTrackColor = BurtonSand,
+                                uncheckedThumbColor = BurtonMute,
+                                uncheckedTrackColor = BurtonElevated,
+                            ),
+                        )
+                    },
+                    onClick = { onCrossfade(!crossfade) },
                 )
                 SheetActionRow(
-                    icon = Icons.Rounded.Queue,
-                    title = "Add to End of Queue",
-                    subtitle = groupName,
-                    enabled = !busy,
-                    onClick = { onPlayAction(PlayAction.ADD_TO_QUEUE) },
+                    icon = Icons.Rounded.Timer,
+                    title = "Sleep Timer",
+                    subtitle = sleepSubtitle(sleepRemainingSeconds),
                 )
-                SheetActionRow(
-                    icon = Icons.Rounded.Replay,
-                    title = "Replace Queue",
-                    subtitle = groupName,
-                    enabled = !busy,
-                    onClick = { onPlayAction(PlayAction.REPLACE_QUEUE) },
-                )
+                SleepTimer.options.forEach { (seconds, label) ->
+                    val selected = SleepTimer.selectedSeconds(sleepRemainingSeconds) == seconds
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (selected) BurtonSand else BurtonIvory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !busy) { onSleepTimer(seconds) }
+                            .padding(start = 40.dp, top = 10.dp, bottom = 10.dp),
+                    )
+                }
             }
             TrackActionPage.PLAYLISTS -> {
                 SheetRowHeader(title = "Sonos Playlists", onBack = onBackToActions)
-                Text("Save “${item.title}” to a playlist on this system.", color = BurtonMute, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Save “${track?.title.orEmpty()}” to a playlist on this system.",
+                    color = BurtonMute,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 Spacer(Modifier.height(12.dp))
                 when {
-                    playlistsLoading -> CircularProgressIndicator(color = BurtonSand, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    playlistsLoading -> CircularProgressIndicator(
+                        color = BurtonSand,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
                     else -> {
                         SheetActionRow(Icons.Rounded.Add, "New playlist", enabled = !busy, onClick = onOpenNewPlaylist)
                         playlists.forEach { playlist ->
@@ -167,7 +176,11 @@ fun TrackActionsSheet(
                             )
                         }
                         if (playlists.isEmpty()) {
-                            Text("No Sonos playlists yet.", color = BurtonMute, modifier = Modifier.padding(top = 8.dp))
+                            Text(
+                                "No Sonos playlists yet.",
+                                color = BurtonMute,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
                         }
                     }
                 }
@@ -204,5 +217,17 @@ fun TrackActionsSheet(
             Spacer(Modifier.height(8.dp))
             Text(it, color = BurtonSand, style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+private fun sleepSubtitle(remainingSeconds: Int): String? {
+    if (remainingSeconds <= 0) return null
+    val minutes = (remainingSeconds + 59) / 60
+    return if (minutes >= 60) {
+        val hours = minutes / 60
+        val rest = minutes % 60
+        if (rest == 0) "$hours hr left" else "$hours hr $rest min left"
+    } else {
+        "$minutes min left"
     }
 }

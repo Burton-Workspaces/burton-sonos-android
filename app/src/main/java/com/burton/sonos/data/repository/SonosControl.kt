@@ -1,5 +1,7 @@
 package com.burton.sonos.data.repository
 
+import com.burton.sonos.data.library.PrefixIndex
+import com.burton.sonos.data.library.PrefixLocation
 import com.burton.sonos.data.parse.AlarmListParser
 import com.burton.sonos.data.parse.DeviceDescriptionParser
 import com.burton.sonos.data.parse.DidlLiteParser
@@ -14,6 +16,8 @@ import com.burton.sonos.domain.NamedGroup
 import com.burton.sonos.domain.NowPlaying
 import com.burton.sonos.domain.PlayAction
 import com.burton.sonos.domain.Player
+import com.burton.sonos.domain.QueuePlayMode
+import com.burton.sonos.domain.SleepTimer
 import com.burton.sonos.domain.SystemSource
 import com.burton.sonos.domain.Track
 import com.burton.sonos.domain.TransportState
@@ -53,7 +57,7 @@ class SonosControl @Inject constructor(
         return Household(id = householdId, groups = groups, players = enriched)
     }
 
-    suspend fun nowPlaying(group: ZoneGroup, coordinator: Player): NowPlaying {
+    suspend fun nowPlaying(group: ZoneGroup, coordinator: Player, extras: Boolean = false): NowPlaying {
         val av = soap.action(
             baseUrl = coordinator.baseUrl,
             controlPath = SonosServices.AV_TRANSPORT_PATH,
@@ -99,6 +103,9 @@ class SonosControl @Inject constructor(
             ?.let { DidlLiteParser.parseTrack(it, coordinator.baseUrl, uri) }
         val track = parsed?.copy(durationSeconds = duration.takeIf { it > 0 } ?: parsed.durationSeconds)
             ?: uri.takeIf { it.isNotBlank() }?.let { fallbackTrack(it, duration) }
+        val playMode = if (extras) runCatching { playMode(coordinator) }.getOrDefault(QueuePlayMode()) else QueuePlayMode()
+        val crossfade = if (extras) runCatching { crossfade(coordinator) }.getOrDefault(false) else false
+        val sleep = if (extras) runCatching { remainingSleepSeconds(coordinator) }.getOrDefault(0) else 0
         return NowPlaying(
             groupId = group.id,
             coordinatorUuid = coordinator.uuid,
@@ -107,6 +114,9 @@ class SonosControl @Inject constructor(
             volume = volume,
             muted = muted,
             positionSeconds = DidlLiteParser.parseHms(position["RelTime"].orEmpty()),
+            playMode = playMode,
+            crossfade = crossfade,
+            sleepRemainingSeconds = sleep,
         )
     }
 
@@ -147,6 +157,73 @@ class SonosControl @Inject constructor(
             serviceType = SonosServices.AV_TRANSPORT,
             action = "Previous",
             args = mapOf("InstanceID" to "0"),
+        )
+    }
+
+    suspend fun playMode(coordinator: Player): QueuePlayMode {
+        val result = soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "GetTransportSettings",
+            args = mapOf("InstanceID" to "0"),
+        )
+        return QueuePlayMode.fromSonos(result["PlayMode"] ?: result["CurrentPlayMode"])
+    }
+
+    suspend fun setPlayMode(coordinator: Player, mode: QueuePlayMode) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "SetPlayMode",
+            args = mapOf("InstanceID" to "0", "NewPlayMode" to mode.toSonos()),
+        )
+    }
+
+    suspend fun crossfade(coordinator: Player): Boolean {
+        val result = soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "GetCrossfadeMode",
+            args = mapOf("InstanceID" to "0"),
+        )
+        val raw = result["CrossfadeMode"].orEmpty()
+        return raw == "1" || raw.equals("true", ignoreCase = true)
+    }
+
+    suspend fun setCrossfade(coordinator: Player, enabled: Boolean) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "SetCrossfadeMode",
+            args = mapOf("InstanceID" to "0", "CrossfadeMode" to if (enabled) "1" else "0"),
+        )
+    }
+
+    suspend fun remainingSleepSeconds(coordinator: Player): Int {
+        val result = soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "GetRemainingSleepTimerDuration",
+            args = mapOf("InstanceID" to "0"),
+        )
+        return DidlLiteParser.parseHms(result["RemainingSleepTimerDuration"].orEmpty())
+    }
+
+    suspend fun setSleepTimer(coordinator: Player, seconds: Int) {
+        soap.action(
+            baseUrl = coordinator.baseUrl,
+            controlPath = SonosServices.AV_TRANSPORT_PATH,
+            serviceType = SonosServices.AV_TRANSPORT,
+            action = "ConfigureSleepTimer",
+            args = mapOf(
+                "InstanceID" to "0",
+                "NewSleepTimerDuration" to SleepTimer.sonosDuration(seconds),
+            ),
         )
     }
 
@@ -192,6 +269,28 @@ class SonosControl @Inject constructor(
             ),
         )
         return DidlLiteParser.parseItems(result["Result"].orEmpty(), player.baseUrl)
+    }
+
+    suspend fun prefixLocations(player: Player, objectId: String): List<PrefixLocation> {
+        val result = soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+            serviceType = SonosServices.CONTENT_DIRECTORY,
+            action = "GetAllPrefixLocations",
+            args = mapOf("ObjectID" to objectId),
+        )
+        return PrefixIndex.parse(result["PrefixAndIndexCSV"].orEmpty())
+    }
+
+    suspend fun findPrefix(player: Player, objectId: String, prefix: String): Int? {
+        val result = soap.action(
+            baseUrl = player.baseUrl,
+            controlPath = SonosServices.CONTENT_DIRECTORY_PATH,
+            serviceType = SonosServices.CONTENT_DIRECTORY,
+            action = "FindPrefix",
+            args = mapOf("ObjectID" to objectId, "Prefix" to prefix),
+        )
+        return result["StartingIndex"]?.toIntOrNull()?.takeIf { it >= 0 }
     }
 
     suspend fun refreshShareIndex(player: Player) {
@@ -486,6 +585,8 @@ class SonosControl @Inject constructor(
             SystemSource("artists", "Artists", "Local music library", SystemSource.Kind.LIBRARY, objectId = "A:ALBUMARTIST"),
             SystemSource("albums", "Albums", "Local music library", SystemSource.Kind.LIBRARY, objectId = "A:ALBUM"),
             SystemSource("tracks", "Tracks", "Local music library", SystemSource.Kind.LIBRARY, objectId = "A:TRACKS"),
+            SystemSource("composers", "Composers", "Local music library", SystemSource.Kind.LIBRARY, objectId = "A:COMPOSER"),
+            SystemSource("genres", "Genres", "Local music library", SystemSource.Kind.LIBRARY, objectId = "A:GENRE"),
             SystemSource("library-playlists", "Imported Playlists", "Playlists from shares", SystemSource.Kind.LIBRARY, objectId = "A:PLAYLISTS"),
             SystemSource("shares", "Music Shares", "Network folders indexed by Sonos", SystemSource.Kind.LIBRARY, objectId = "S:"),
             SystemSource("radio", "Radio", "TuneIn on this system", SystemSource.Kind.RADIO, objectId = "R:0/0"),

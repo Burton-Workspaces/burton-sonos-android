@@ -271,6 +271,8 @@ private fun BurtonApp() {
                     RoomDetailScreen(
                         onBack = { navController.popBackStack() },
                         onOpenGrouping = { grouping = true },
+                        onOpenQueue = { navController.navigate(Routes.browse("Q:0", "Queue")) },
+                        onSearchArtist = { navController.goTab(Routes.SEARCH) },
                     )
                 }
                 composable(Routes.SOURCES) {

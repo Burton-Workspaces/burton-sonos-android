@@ -37,6 +37,8 @@ object DidlLiteParser {
             albumArtUrl = item.albumArtUrl,
             uri = item.uri ?: fallbackUri,
             durationSeconds = duration,
+            metadata = item.metadata ?: didl,
+            objectId = item.id,
         )
     }
 

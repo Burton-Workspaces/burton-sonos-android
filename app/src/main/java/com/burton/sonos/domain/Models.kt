@@ -81,7 +81,86 @@ data class Track(
     val albumArtUrl: String?,
     val uri: String,
     val durationSeconds: Int,
-)
+    val metadata: String? = null,
+    val objectId: String = "",
+) {
+    fun toBrowseItem(): BrowseItem = BrowseItem(
+        id = objectId.ifBlank { uri },
+        parentId = "Q:0",
+        title = title,
+        subtitle = artist.ifBlank { null },
+        albumArtUrl = albumArtUrl,
+        uri = uri.ifBlank { null },
+        metadata = metadata,
+        upnpClass = "object.item.audioItem.musicTrack",
+        isContainer = false,
+    )
+}
+
+enum class RepeatMode {
+    OFF,
+    ALL,
+    ONE,
+}
+
+data class QueuePlayMode(
+    val shuffle: Boolean = false,
+    val repeat: RepeatMode = RepeatMode.OFF,
+) {
+    fun toggleShuffle(): QueuePlayMode = copy(shuffle = !shuffle)
+
+    fun cycleRepeat(): QueuePlayMode = copy(
+        repeat = when (repeat) {
+            RepeatMode.OFF -> RepeatMode.ALL
+            RepeatMode.ALL -> RepeatMode.ONE
+            RepeatMode.ONE -> RepeatMode.OFF
+        },
+    )
+
+    fun toSonos(): String = when {
+        shuffle && repeat == RepeatMode.ONE -> "SHUFFLE_REPEAT_ONE"
+        shuffle && repeat == RepeatMode.ALL -> "SHUFFLE"
+        shuffle -> "SHUFFLE_NOREPEAT"
+        repeat == RepeatMode.ONE -> "REPEAT_ONE"
+        repeat == RepeatMode.ALL -> "REPEAT_ALL"
+        else -> "NORMAL"
+    }
+
+    companion object {
+        fun fromSonos(raw: String?): QueuePlayMode = when (raw?.uppercase()) {
+            "REPEAT_ALL" -> QueuePlayMode(false, RepeatMode.ALL)
+            "REPEAT_ONE" -> QueuePlayMode(false, RepeatMode.ONE)
+            "SHUFFLE_NOREPEAT" -> QueuePlayMode(true, RepeatMode.OFF)
+            "SHUFFLE" -> QueuePlayMode(true, RepeatMode.ALL)
+            "SHUFFLE_REPEAT_ONE" -> QueuePlayMode(true, RepeatMode.ONE)
+            else -> QueuePlayMode()
+        }
+    }
+}
+
+object SleepTimer {
+    val options = listOf(
+        0 to "Off",
+        15 * 60 to "15 minutes",
+        30 * 60 to "30 minutes",
+        45 * 60 to "45 minutes",
+        60 * 60 to "1 hour",
+        2 * 60 * 60 to "2 hours",
+    )
+
+    fun selectedSeconds(remaining: Int): Int {
+        if (remaining <= 0) return 0
+        return options.map { it.first }.filter { it > 0 }.minBy { kotlin.math.abs(it - remaining) }
+    }
+
+    fun sonosDuration(seconds: Int): String {
+        if (seconds <= 0) return ""
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val secs = seconds % 60
+        return "%02d:%02d:%02d".format(hours, minutes, secs)
+    }
+}
 
 data class NowPlaying(
     val groupId: String,
@@ -91,6 +170,9 @@ data class NowPlaying(
     val volume: Int,
     val muted: Boolean,
     val positionSeconds: Int,
+    val playMode: QueuePlayMode = QueuePlayMode(),
+    val crossfade: Boolean = false,
+    val sleepRemainingSeconds: Int = 0,
 ) {
     val displayTitle: String
         get() = track?.title?.takeIf { it.isNotBlank() }

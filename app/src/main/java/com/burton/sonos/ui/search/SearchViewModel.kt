@@ -37,6 +37,14 @@ class SearchViewModel @Inject constructor(
     init {
         repository.start()
         viewModelScope.launch {
+            repository.incomingSearch.collect { pending ->
+                if (!pending.isNullOrBlank()) {
+                    onQueryChange(pending)
+                    repository.consumeIncomingSearch()
+                }
+            }
+        }
+        viewModelScope.launch {
             queryFlow
                 .debounce(350)
                 .distinctUntilChanged()
