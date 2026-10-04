@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Automatic releases are produced by [release-please](https://github.com/googleapis/release-please)
 from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.10.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.9.0...v1.10.0) (2026-10-04)
+
+
+### Features
+
+* add letter jump and now playing extras ([2935114](https://github.com/Burton-Workspaces/burton-sonos-android/commit/29351145494fa2fbfd09b258f7fda69a73e69dac))
+* add source track actions and queue grouping ([d2fa401](https://github.com/Burton-Workspaces/burton-sonos-android/commit/d2fa4018693236e016a39e5ef82ec59c8a020336))
+
 ## [1.9.0](https://github.com/Burton-Workspaces/burton-sonos-android/compare/v1.8.0...v1.9.0) (2026-10-03)
 
 
