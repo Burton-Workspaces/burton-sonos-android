@@ -2,7 +2,7 @@
 
 A local Android controller for a Sonos household. The phone talks to speakers on the same Wi-Fi using SSDP discovery and the speakers’ UPnP/SOAP APIs. There is no Sonos cloud account, no remote access, and no music-service login in this app.
 
-Signed APKs are published on [GitHub Releases](https://github.com/Burton-Workspaces/burton-sonos-android/releases). Droidify / F-Droid: [burton-sonos-fdroid](https://github.com/Burton-Workspaces/burton-sonos-fdroid) (`https://burton-workspaces.github.io/burton-sonos-fdroid/fdroid/repo`).
+Signed APKs are published on [GitHub Releases](https://github.com/Burton-Workspaces/burton-sonos-android/releases). Droidify / F-Droid: [burton-app-dist](https://github.com/Burton-Workspaces/burton-app-dist) (`https://burton-workspaces.github.io/burton-app-dist/fdroid/repo`).
 
 ## What it does
 

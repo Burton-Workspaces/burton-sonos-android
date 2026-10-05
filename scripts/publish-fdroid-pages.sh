@@ -12,8 +12,8 @@ usage() {
   echo "  FDROID_ROOT       Directory from \`fdroid init\` (config.yml + repo keystore)" >&2
   echo >&2
   echo "Optional:" >&2
-  echo "  FDROID_PAGES_DIR    Git checkout of Burton-Workspaces/burton-sonos-fdroid" >&2
-  echo "                      (defaults to ../burton-sonos-fdroid when that clone exists)" >&2
+  echo "  FDROID_PAGES_DIR    Git checkout of Burton-Workspaces/burton-app-dist" >&2
+  echo "                      (defaults to ../rabun-app-dist when that clone exists)" >&2
   echo "  FDROID_PAGES_PUSH   Set to 0 to commit without pushing (default: 1)" >&2
   echo "  FDROID_ASSEMBLE     Set to 1 to always run assembleRelease (default: only if APK is missing)" >&2
   exit 1
@@ -55,14 +55,14 @@ if [[ "$version" != "$actual" ]]; then
 fi
 
 if [[ -z "${FDROID_PAGES_DIR:-}" ]]; then
-  sibling="$(cd "$ROOT/.." && pwd)/burton-sonos-fdroid"
+  sibling="$(cd "$ROOT/.." && pwd)/rabun-app-dist"
   if [[ -d "$sibling/.git" ]]; then
     FDROID_PAGES_DIR="$sibling"
   fi
 fi
 
 : "${FDROID_ROOT:?Set FDROID_ROOT to the directory created by fdroid init (or put it in fdroid-pages.env)}"
-: "${FDROID_PAGES_DIR:?Clone Burton-Workspaces/burton-sonos-fdroid next to this repo, or set FDROID_PAGES_DIR}"
+: "${FDROID_PAGES_DIR:?Clone Burton-Workspaces/burton-app-dist next to this repo, or set FDROID_PAGES_DIR}"
 
 FDROID_ROOT="$(cd "$FDROID_ROOT" && pwd)"
 FDROID_PAGES_DIR="$(cd "$FDROID_PAGES_DIR" && pwd)"
